@@ -1,8 +1,24 @@
 from django.db import models
 
 class Account(models.Model):
+    TYPE_CHECKING = 'checking'
+    TYPE_SAVINGS = 'savings'
+    TYPE_CREDIT_CARD = 'credit_card'
+    TYPE_INVESTMENT = 'investment'
+    TYPE_LOAN = 'loan'
+    TYPE_OTHER = 'other'
+
+    TYPE_CHOICES = [
+        (TYPE_CHECKING, 'Checking'),
+        (TYPE_SAVINGS, 'Savings'),
+        (TYPE_CREDIT_CARD, 'Credit Card'),
+        (TYPE_INVESTMENT, 'Investment'),
+        (TYPE_LOAN, 'Loan'),
+        (TYPE_OTHER, 'Other'),
+    ]
+
     name = models.CharField(max_length=255)
-    type = models.CharField(max_length=255)
+    type = models.CharField(max_length=255, choices=TYPE_CHOICES, default=TYPE_CHECKING)
     file_upload_schema = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -12,10 +28,22 @@ class Account(models.Model):
 
 
 class FileUpload(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_PROCESSING = 'processing'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PROCESSING, 'Processing'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='file_uploads')
     filename = models.CharField(max_length=255)
-    transaction_count = models.IntegerField()
-    status = models.CharField(max_length=50)
+    transaction_count = models.IntegerField(default=0)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PROCESSING)
     errors = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
