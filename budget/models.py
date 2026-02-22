@@ -54,7 +54,7 @@ class FileUpload(models.Model):
 
 class Transaction(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transactions')
-    file_upload = models.ForeignKey(FileUpload, on_delete=models.CASCADE, related_name='transactions')
+    file_upload = models.ForeignKey(FileUpload, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     transaction_date = models.DateTimeField(null=True, blank=True)
     posted_date = models.DateTimeField(null=True, blank=True)
     description = models.CharField(max_length=255, null=True, blank=True)
