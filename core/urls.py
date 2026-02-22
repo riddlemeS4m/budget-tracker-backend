@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from rest_framework.routers import DefaultRouter
 from budget.views import AccountViewSet, FileUploadViewSet, TransactionListView, TransactionDetailView
 
@@ -27,6 +28,11 @@ api_v1_patterns = [
     path('', include(router.urls)),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
     path('transactions/<int:pk>/', TransactionDetailView.as_view(), name='transaction-detail'),
+    
+    # Schema and docs
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
 urlpatterns = [
