@@ -135,10 +135,35 @@ class TransactionListView(APIView):
         parameters=[
             OpenApiParameter(name="page", type=int, location="query", required=False, description="Page number (1-indexed)"),
             OpenApiParameter(name="page_size", type=int, location="query", required=False, description="Items per page"),
+            OpenApiParameter(name="account", type=int, location="query", required=False, description="Filter by account ID"),
+            OpenApiParameter(name="file_upload", type=int, location="query", required=False, description="Filter by file upload ID"),
+            OpenApiParameter(name="transaction_date_from", type=str, location="query", required=False, description="Filter transactions on or after this date (ISO 8601, e.g. 2025-01-01)"),
+            OpenApiParameter(name="transaction_date_to", type=str, location="query", required=False, description="Filter transactions on or before this date (ISO 8601, e.g. 2025-12-31)"),
+            OpenApiParameter(name="description", type=str, location="query", required=False, description="Filter by description (case-insensitive substring match)"),
         ],
     )
     def get(self, request):
         transactions = Transaction.objects.all().order_by("-created_at")
+
+        account_id = request.query_params.get("account")
+        if account_id:
+            transactions = transactions.filter(account_id=int(account_id))
+
+        file_upload_id = request.query_params.get("file_upload")
+        if file_upload_id:
+            transactions = transactions.filter(file_upload_id=int(file_upload_id))
+
+        transaction_date_from = request.query_params.get("transaction_date_from")
+        if transaction_date_from:
+            transactions = transactions.filter(transaction_date__date__gte=transaction_date_from)
+
+        transaction_date_to = request.query_params.get("transaction_date_to")
+        if transaction_date_to:
+            transactions = transactions.filter(transaction_date__date__lte=transaction_date_to)
+
+        description = request.query_params.get("description")
+        if description:
+            transactions = transactions.filter(description__icontains=description)
 
         page_size = int(request.query_params.get("page_size", TRANSACTIONS_DEFAULT_PAGE_SIZE))
         page_number = int(request.query_params.get("page", 1))
