@@ -1,6 +1,7 @@
 asgiref==3.11.1
 attrs==25.4.0
 Django==6.0.2
+django-cors-headers==4.7.0
 django-environ==0.13.0
 djangorestframework==3.16.1
 drf-spectacular==0.29.0
