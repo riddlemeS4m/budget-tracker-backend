@@ -176,17 +176,21 @@ paths:
           description: ''
     post:
       operationId: file_uploads_create
+      description: |-
+        POST /api/v1/file-uploads/
+        Accepts multipart/form-data with:
+          - account: account ID (required)
+          - file: a CSV file (optional)
+        When a file is provided, parses it and creates one Transaction per row.
+        Applies the account schema immediately if one exists.
       tags:
       - file-uploads
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/FileUpload'
           application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/FileUpload'
-          multipart/form-data:
             schema:
               $ref: '#/components/schemas/FileUpload'
         required: true
@@ -309,6 +313,38 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/file-uploads/{id}/process/:
+    post:
+      operationId: file_uploads_process
+      description: |-
+        POST /api/v1/file-uploads/{id}/process/
+        Re-processes all transactions for this FileUpload using the account schema.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this file upload.
+        required: true
+      tags:
+      - file-uploads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileUpload'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUpload'
+          description: ''
   /api/v1/schema/:
     get:
       operationId: schema_retrieve
@@ -590,8 +626,7 @@ components:
           type: string
           maxLength: 255
         type:
-          type: string
-          maxLength: 255
+          $ref: '#/components/schemas/TypeEnum'
         file_upload_schema:
           nullable: true
         created_at:
@@ -606,13 +641,15 @@ components:
       - created_at
       - id
       - name
-      - type
       - updated_at
     FileUpload:
       type: object
       properties:
         id:
           type: integer
+          readOnly: true
+        headers:
+          type: string
           readOnly: true
         filename:
           type: string
@@ -622,8 +659,7 @@ components:
           maximum: 2147483647
           minimum: -2147483648
         status:
-          type: string
-          maxLength: 50
+          $ref: '#/components/schemas/StatusEnum'
         errors:
           type: string
           nullable: true
@@ -641,9 +677,8 @@ components:
       - account
       - created_at
       - filename
+      - headers
       - id
-      - status
-      - transaction_count
       - updated_at
     PatchedAccount:
       type: object
@@ -655,8 +690,7 @@ components:
           type: string
           maxLength: 255
         type:
-          type: string
-          maxLength: 255
+          $ref: '#/components/schemas/TypeEnum'
         file_upload_schema:
           nullable: true
         created_at:
@@ -673,6 +707,9 @@ components:
         id:
           type: integer
           readOnly: true
+        headers:
+          type: string
+          readOnly: true
         filename:
           type: string
           maxLength: 255
@@ -681,8 +718,7 @@ components:
           maximum: 2147483647
           minimum: -2147483648
         status:
-          type: string
-          maxLength: 50
+          $ref: '#/components/schemas/StatusEnum'
         errors:
           type: string
           nullable: true
@@ -722,6 +758,10 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        subcategory:
+          type: string
+          nullable: true
+          maxLength: 255
         amount:
           type: string
           format: decimal
@@ -740,6 +780,19 @@ components:
           type: integer
         file_upload:
           type: integer
+          nullable: true
+    StatusEnum:
+      enum:
+      - pending
+      - processing
+      - completed
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `processing` - Processing
+        * `completed` - Completed
+        * `failed` - Failed
     Transaction:
       type: object
       properties:
@@ -766,6 +819,10 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        subcategory:
+          type: string
+          nullable: true
+          maxLength: 255
         amount:
           type: string
           format: decimal
@@ -784,13 +841,29 @@ components:
           type: integer
         file_upload:
           type: integer
+          nullable: true
       required:
       - account
       - created_at
-      - file_upload
       - id
       - raw_data
       - updated_at
+    TypeEnum:
+      enum:
+      - checking
+      - savings
+      - credit_card
+      - investment
+      - loan
+      - other
+      type: string
+      description: |-
+        * `checking` - Checking
+        * `savings` - Savings
+        * `credit_card` - Credit Card
+        * `investment` - Investment
+        * `loan` - Loan
+        * `other` - Other
   securitySchemes:
     basicAuth:
       type: http
