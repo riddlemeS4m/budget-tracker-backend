@@ -28,3 +28,10 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['account'] = AccountSerializer(instance.account).data
+        if instance.file_upload:
+            data['file_upload'] = FileUploadSerializer(instance.file_upload).data
+        return data
