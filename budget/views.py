@@ -3,11 +3,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Account, FileUpload, Transaction
 from .serializers import AccountSerializer, FileUploadSerializer, TransactionSerializer
 from .csv_utils import parse_csv, apply_schema_to_transaction
+
+TRANSACTIONS_DEFAULT_PAGE_SIZE = 100
 
 
 class AccountViewSet(viewsets.ModelViewSet):
@@ -127,11 +130,31 @@ class TransactionListView(APIView):
     """Handles GET /transactions/ and POST /transactions/"""
     serializer_class = TransactionSerializer
 
-    @extend_schema(operation_id="transactions_list")
+    @extend_schema(
+        operation_id="transactions_list",
+        parameters=[
+            OpenApiParameter(name="page", type=int, location="query", required=False, description="Page number (1-indexed)"),
+            OpenApiParameter(name="page_size", type=int, location="query", required=False, description="Items per page"),
+        ],
+    )
     def get(self, request):
-        transactions = Transaction.objects.all()
-        serializer = TransactionSerializer(transactions, many=True)
-        return Response(serializer.data)
+        transactions = Transaction.objects.all().order_by("-created_at")
+
+        page_size = int(request.query_params.get("page_size", TRANSACTIONS_DEFAULT_PAGE_SIZE))
+        page_number = int(request.query_params.get("page", 1))
+
+        paginator = Paginator(transactions, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        serializer = TransactionSerializer(page_obj.object_list, many=True)
+
+        return Response({
+            "count": paginator.count,
+            "total_pages": paginator.num_pages,
+            "page": page_obj.number,
+            "page_size": page_size,
+            "results": serializer.data,
+        })
 
     @extend_schema(operation_id="transactions_create")
     def post(self, request):
