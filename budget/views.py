@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from .models import Account, FileUpload, Transaction
 from .serializers import AccountSerializer, FileUploadSerializer, TransactionSerializer
 
@@ -15,12 +16,15 @@ class FileUploadViewSet(viewsets.ModelViewSet):
 
 class TransactionListView(APIView):
     """Handles GET /transactions/ and POST /transactions/"""
+    serializer_class = TransactionSerializer
 
+    @extend_schema(operation_id="transactions_list")
     def get(self, request):
         transactions = Transaction.objects.all()
         serializer = TransactionSerializer(transactions, many=True)
         return Response(serializer.data)
 
+    @extend_schema(operation_id="transactions_create")
     def post(self, request):
         serializer = TransactionSerializer(data=request.data)
         if serializer.is_valid():
@@ -31,12 +35,15 @@ class TransactionListView(APIView):
 
 class TransactionDetailView(APIView):
     """Handles GET /transactions/<id>/, PATCH /transactions/<id>/, DELETE /transactions/<id>/"""
+    serializer_class = TransactionSerializer
 
+    @extend_schema(operation_id="transactions_retrieve")
     def get(self, request, pk):
         transaction = get_object_or_404(Transaction, pk=pk)
         serializer = TransactionSerializer(transaction)
         return Response(serializer.data)
 
+    @extend_schema(operation_id="transactions_partial_update")
     def patch(self, request, pk):
         transaction = get_object_or_404(Transaction, pk=pk)
         serializer = TransactionSerializer(transaction, data=request.data, partial=True)
@@ -45,6 +52,7 @@ class TransactionDetailView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(operation_id="transactions_destroy")
     def delete(self, request, pk):
         transaction = get_object_or_404(Transaction, pk=pk)
         transaction.delete()
