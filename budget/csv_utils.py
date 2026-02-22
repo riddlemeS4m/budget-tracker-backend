@@ -66,6 +66,7 @@ def apply_schema_to_transaction(transaction, schema):
             "description":      "<csv_col>" | null,
             "description_2":    "<csv_col>" | null,
             "category":         "<csv_col>" | null,
+            "subcategory":      "<csv_col>" | null,
             "amount":           "<csv_col>" | null,
         },
         "amount_column_format": "debit_is_negative" | "debit_is_positive" | null,
@@ -94,6 +95,9 @@ def apply_schema_to_transaction(transaction, schema):
 
     cat = get_raw("category")
     transaction.category = str(cat).strip() if cat else None
+
+    subcat = get_raw("subcategory")
+    transaction.subcategory = str(subcat).strip() if subcat else None
 
     if amount_format in ("debit_is_negative", "debit_is_positive"):
         raw_amount = _parse_amount(get_raw("amount"))
