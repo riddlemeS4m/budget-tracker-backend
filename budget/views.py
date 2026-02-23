@@ -12,6 +12,11 @@ from .csv_utils import parse_csv, apply_schema_to_transaction
 
 TRANSACTIONS_DEFAULT_PAGE_SIZE = 100
 
+ALLOWED_SORT_FIELDS = {
+    "id", "account__name", "transaction_date",
+    "description", "amount", "category", "subcategory",
+}
+
 
 class AccountViewSet(viewsets.ModelViewSet):
     queryset = Account.objects.all()
@@ -140,10 +145,11 @@ class TransactionListView(APIView):
             OpenApiParameter(name="transaction_date_from", type=str, location="query", required=False, description="Filter transactions on or after this date (ISO 8601, e.g. 2025-01-01)"),
             OpenApiParameter(name="transaction_date_to", type=str, location="query", required=False, description="Filter transactions on or before this date (ISO 8601, e.g. 2025-12-31)"),
             OpenApiParameter(name="description", type=str, location="query", required=False, description="Filter by description (case-insensitive substring match)"),
+            OpenApiParameter(name="sort_by", type=str, location="query", required=False, description="Sort field, optionally prefixed with '-' for descending (e.g. '-amount'). Allowed values: id, account__name, transaction_date, description, amount, category, subcategory. Defaults to -created_at."),
         ],
     )
     def get(self, request):
-        transactions = Transaction.objects.all().order_by("-created_at")
+        transactions = Transaction.objects.all()
 
         account_id = request.query_params.get("account")
         if account_id:
@@ -164,6 +170,17 @@ class TransactionListView(APIView):
         description = request.query_params.get("description")
         if description:
             transactions = transactions.filter(description__icontains=description)
+
+        sort_by = request.query_params.get("sort_by", "-created_at")
+        direction = ""
+        field = sort_by
+        if sort_by.startswith("-"):
+            direction = "-"
+            field = sort_by[1:]
+        if field in ALLOWED_SORT_FIELDS:
+            transactions = transactions.order_by(f"{direction}{field}")
+        else:
+            transactions = transactions.order_by("-created_at")
 
         page_size = int(request.query_params.get("page_size", TRANSACTIONS_DEFAULT_PAGE_SIZE))
         page_number = int(request.query_params.get("page", 1))
