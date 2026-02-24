@@ -1442,6 +1442,71 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/transactions/export/:
+    get:
+      operationId: transactions_export
+      description: Handles GET /transactions/export/ — streams all matching transactions
+        as a CSV file.
+      parameters:
+      - in: query
+        name: account
+        schema:
+          type: integer
+        description: Filter by account ID
+      - in: query
+        name: description
+        schema:
+          type: string
+        description: Filter by description (case-insensitive substring match)
+      - in: query
+        name: file_upload
+        schema:
+          type: integer
+        description: Filter by file upload ID
+      - in: query
+        name: location_classification
+        schema:
+          type: integer
+        description: Filter by location classification ID
+      - in: query
+        name: location_subclassification
+        schema:
+          type: integer
+        description: Filter by location subclassification ID
+      - in: query
+        name: person_classification
+        schema:
+          type: integer
+        description: Filter by person classification ID
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+        description: Sort field, optionally prefixed with '-' for descending
+      - in: query
+        name: time_classification
+        schema:
+          type: integer
+        description: Filter by time classification ID
+      - in: query
+        name: transaction_date_from
+        schema:
+          type: string
+        description: Filter transactions on or after this date (ISO 8601)
+      - in: query
+        name: transaction_date_to
+        schema:
+          type: string
+        description: Filter transactions on or before this date (ISO 8601)
+      tags:
+      - transactions
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
 components:
   schemas:
     Account:
@@ -1541,6 +1606,14 @@ components:
           maxLength: 255
         type:
           $ref: '#/components/schemas/LocationClassificationTypeEnum'
+        transaction_count:
+          type: integer
+          readOnly: true
+          default: 0
+        subcategory_count:
+          type: integer
+          readOnly: true
+          default: 0
         created_at:
           type: string
           format: date-time
@@ -1553,6 +1626,8 @@ components:
       - created_at
       - id
       - name
+      - subcategory_count
+      - transaction_count
       - type
       - updated_at
     LocationClassificationTypeEnum:
@@ -1685,6 +1760,14 @@ components:
           maxLength: 255
         type:
           $ref: '#/components/schemas/LocationClassificationTypeEnum'
+        transaction_count:
+          type: integer
+          readOnly: true
+          default: 0
+        subcategory_count:
+          type: integer
+          readOnly: true
+          default: 0
         created_at:
           type: string
           format: date-time

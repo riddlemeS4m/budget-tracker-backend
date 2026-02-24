@@ -1,5 +1,6 @@
 import csv
 import io
+from django.db.models import Count
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -154,7 +155,10 @@ class FileUploadViewSet(viewsets.ModelViewSet):
     
 
 class LocationClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationClassification.objects.order_by('name')
+    queryset = LocationClassification.objects.annotate(
+        transaction_count=Count('transactions', distinct=True),
+        subcategory_count=Count('location_subclassifications', distinct=True),
+    ).order_by('name')
     serializer_class = LocationClassificationSerializer
 
 

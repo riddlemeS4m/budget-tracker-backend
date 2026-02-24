@@ -44,9 +44,12 @@ class FileUploadSerializer(serializers.ModelSerializer):
 
 
 class LocationClassificationSerializer(serializers.ModelSerializer):
+    transaction_count = serializers.IntegerField(read_only=True, default=0)
+    subcategory_count = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = LocationClassification
-        fields = '__all__'
+        fields = ['id', 'name', 'type', 'transaction_count', 'subcategory_count', 'created_at', 'updated_at']
 
 
 class LocationSubClassificationSerializer(serializers.ModelSerializer):
