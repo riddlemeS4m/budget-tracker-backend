@@ -5,9 +5,10 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import Account, FileUpload, Transaction
-from .serializers import AccountSerializer, FileUploadSerializer, TransactionSerializer
+from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
+from rest_framework import fields as drf_fields
+from .models import Account, FileUpload, Transaction, LocationClassification, LocationSubClassification, TimeClassification, PersonClassification
+from .serializers import AccountSerializer, FileUploadSerializer, TransactionSerializer, LocationClassificationSerializer, LocationSubClassificationSerializer, TimeClassificationSerializer, PersonClassificationSerializer
 from .csv_utils import parse_csv, apply_schema_to_transaction
 
 TRANSACTIONS_DEFAULT_PAGE_SIZE = 100
@@ -36,12 +37,12 @@ class FileUploadViewSet(viewsets.ModelViewSet):
         """
         POST /api/v1/file-uploads/
         Accepts multipart/form-data with:
-          - account: account ID (required)
+          - account_id: account ID (required)
           - file: a CSV file (optional)
         When a file is provided, parses it and creates one Transaction per row.
         Applies the account schema immediately if one exists.
         """
-        account_id = request.data.get("account")
+        account_id = request.data.get("account_id")
         if not account_id:
             return Response({"detail": "No account provided."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -129,6 +130,26 @@ class FileUploadViewSet(viewsets.ModelViewSet):
 
         serializer = FileUploadSerializer(file_upload)
         return Response(serializer.data)
+    
+
+class LocationClassificationViewSet(viewsets.ModelViewSet):
+    queryset = LocationClassification.objects.all()
+    serializer_class = LocationClassificationSerializer
+
+
+class LocationSubClassificationViewSet(viewsets.ModelViewSet):
+    queryset = LocationSubClassification.objects.all()
+    serializer_class = LocationSubClassificationSerializer
+
+
+class TimeClassificationViewSet(viewsets.ModelViewSet):
+    queryset = TimeClassification.objects.all()
+    serializer_class = TimeClassificationSerializer
+    
+
+class PersonClassificationViewSet(viewsets.ModelViewSet):
+    queryset = PersonClassification.objects.all()
+    serializer_class = PersonClassificationSerializer
 
 
 class TransactionListView(APIView):
@@ -147,6 +168,16 @@ class TransactionListView(APIView):
             OpenApiParameter(name="description", type=str, location="query", required=False, description="Filter by description (case-insensitive substring match)"),
             OpenApiParameter(name="sort_by", type=str, location="query", required=False, description="Sort field, optionally prefixed with '-' for descending (e.g. '-amount'). Allowed values: id, account__name, transaction_date, description, amount, category, subcategory. Defaults to -created_at."),
         ],
+        responses=inline_serializer(
+            name='PaginatedTransactionList',
+            fields={
+                'count': drf_fields.IntegerField(),
+                'total_pages': drf_fields.IntegerField(),
+                'page': drf_fields.IntegerField(),
+                'page_size': drf_fields.IntegerField(),
+                'results': TransactionSerializer(many=True),
+            },
+        ),
     )
     def get(self, request):
         transactions = Transaction.objects.all()

@@ -50,6 +50,65 @@ class FileUpload(models.Model):
 
     def __str__(self):
         return self.filename
+    
+
+class LocationClassification(models.Model):
+    TYPE_INCOME = 'income'
+    TYPE_EXPENSE = 'expense'
+    TYPE_TRANSFER = 'transfer'
+    TYPE_CHOICES = [
+        (TYPE_INCOME, 'Income'),
+        (TYPE_EXPENSE, 'Expense'),
+        (TYPE_TRANSFER, 'Transfer'),
+    ]
+
+    name = models.CharField(max_length=255)
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'location classifications'
+
+    def __str__(self):
+        return f"[{self.type}] {self.name}"
+
+
+class LocationSubClassification(models.Model):
+    location_classification = models.ForeignKey(LocationClassification, on_delete=models.CASCADE, related_name='location_subclassifications')
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'location subclassifications'
+
+    def __str__(self):
+        return f"{self.location_classification.name} > {self.name}"
+
+
+class TimeClassification(models.Model):
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'time classifications'
+
+    def __str__(self):
+        return self.name
+
+
+class PersonClassification(models.Model):
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'person classifications'
+
+    def __str__(self):
+        return self.name
 
 
 class Transaction(models.Model):
@@ -63,6 +122,10 @@ class Transaction(models.Model):
     subcategory = models.CharField(max_length=255, null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     raw_data = models.JSONField()
+    location_classification = models.ForeignKey(LocationClassification, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    location_subclassification = models.ForeignKey(LocationSubClassification, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    time_classification = models.ForeignKey(TimeClassification, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    person_classification = models.ForeignKey(PersonClassification, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

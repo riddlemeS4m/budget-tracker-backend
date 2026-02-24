@@ -179,7 +179,7 @@ paths:
       description: |-
         POST /api/v1/file-uploads/
         Accepts multipart/form-data with:
-          - account: account ID (required)
+          - account_id: account ID (required)
           - file: a CSV file (optional)
         When a file is provided, parses it and creates one Transaction per row.
         Applies the account schema immediately if one exists.
@@ -345,6 +345,465 @@ paths:
               schema:
                 $ref: '#/components/schemas/FileUpload'
           description: ''
+  /api/v1/location-classifications/:
+    get:
+      operationId: location_classifications_list
+      tags:
+      - location-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationClassification'
+          description: ''
+    post:
+      operationId: location_classifications_create
+      tags:
+      - location-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LocationClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LocationClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationClassification'
+          description: ''
+  /api/v1/location-classifications/{id}/:
+    get:
+      operationId: location_classifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location classification.
+        required: true
+      tags:
+      - location-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationClassification'
+          description: ''
+    put:
+      operationId: location_classifications_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location classification.
+        required: true
+      tags:
+      - location-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LocationClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LocationClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationClassification'
+          description: ''
+    patch:
+      operationId: location_classifications_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location classification.
+        required: true
+      tags:
+      - location-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLocationClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLocationClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLocationClassification'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationClassification'
+          description: ''
+    delete:
+      operationId: location_classifications_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location classification.
+        required: true
+      tags:
+      - location-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/location-subclassifications/:
+    get:
+      operationId: location_subclassifications_list
+      tags:
+      - location-subclassifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationSubClassification'
+          description: ''
+    post:
+      operationId: location_subclassifications_create
+      tags:
+      - location-subclassifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationSubClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LocationSubClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LocationSubClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationSubClassification'
+          description: ''
+  /api/v1/location-subclassifications/{id}/:
+    get:
+      operationId: location_subclassifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location sub classification.
+        required: true
+      tags:
+      - location-subclassifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationSubClassification'
+          description: ''
+    put:
+      operationId: location_subclassifications_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location sub classification.
+        required: true
+      tags:
+      - location-subclassifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationSubClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LocationSubClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LocationSubClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationSubClassification'
+          description: ''
+    patch:
+      operationId: location_subclassifications_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location sub classification.
+        required: true
+      tags:
+      - location-subclassifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLocationSubClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLocationSubClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLocationSubClassification'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationSubClassification'
+          description: ''
+    delete:
+      operationId: location_subclassifications_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location sub classification.
+        required: true
+      tags:
+      - location-subclassifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/person-classifications/:
+    get:
+      operationId: person_classifications_list
+      tags:
+      - person-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonClassification'
+          description: ''
+    post:
+      operationId: person_classifications_create
+      tags:
+      - person-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonClassification'
+          description: ''
+  /api/v1/person-classifications/{id}/:
+    get:
+      operationId: person_classifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this person classification.
+        required: true
+      tags:
+      - person-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonClassification'
+          description: ''
+    put:
+      operationId: person_classifications_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this person classification.
+        required: true
+      tags:
+      - person-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonClassification'
+          description: ''
+    patch:
+      operationId: person_classifications_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this person classification.
+        required: true
+      tags:
+      - person-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonClassification'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonClassification'
+          description: ''
+    delete:
+      operationId: person_classifications_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this person classification.
+        required: true
+      tags:
+      - person-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/v1/schema/:
     get:
       operationId: schema_retrieve
@@ -492,10 +951,206 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/time-classifications/:
+    get:
+      operationId: time_classifications_list
+      tags:
+      - time-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeClassification'
+          description: ''
+    post:
+      operationId: time_classifications_create
+      tags:
+      - time-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeClassification'
+          description: ''
+  /api/v1/time-classifications/{id}/:
+    get:
+      operationId: time_classifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this time classification.
+        required: true
+      tags:
+      - time-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeClassification'
+          description: ''
+    put:
+      operationId: time_classifications_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this time classification.
+        required: true
+      tags:
+      - time-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeClassification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeClassification'
+          description: ''
+    patch:
+      operationId: time_classifications_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this time classification.
+        required: true
+      tags:
+      - time-classifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeClassification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeClassification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeClassification'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeClassification'
+          description: ''
+    delete:
+      operationId: time_classifications_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this time classification.
+        required: true
+      tags:
+      - time-classifications
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/v1/transactions/:
     get:
       operationId: transactions_list
       description: Handles GET /transactions/ and POST /transactions/
+      parameters:
+      - in: query
+        name: account
+        schema:
+          type: integer
+        description: Filter by account ID
+      - in: query
+        name: description
+        schema:
+          type: string
+        description: Filter by description (case-insensitive substring match)
+      - in: query
+        name: file_upload
+        schema:
+          type: integer
+        description: Filter by file upload ID
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Page number (1-indexed)
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: Items per page
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+        description: 'Sort field, optionally prefixed with ''-'' for descending (e.g.
+          ''-amount''). Allowed values: id, account__name, transaction_date, description,
+          amount, category, subcategory. Defaults to -created_at.'
+      - in: query
+        name: transaction_date_from
+        schema:
+          type: string
+        description: Filter transactions on or after this date (ISO 8601, e.g. 2025-01-01)
+      - in: query
+        name: transaction_date_to
+        schema:
+          type: string
+        description: Filter transactions on or before this date (ISO 8601, e.g. 2025-12-31)
       tags:
       - transactions
       security:
@@ -507,7 +1162,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Transaction'
+                $ref: '#/components/schemas/PaginatedTransactionList'
           description: ''
     post:
       operationId: transactions_create
@@ -626,7 +1281,7 @@ components:
           type: string
           maxLength: 255
         type:
-          $ref: '#/components/schemas/TypeEnum'
+          $ref: '#/components/schemas/AccountTypeEnum'
         file_upload_schema:
           nullable: true
         created_at:
@@ -642,18 +1297,41 @@ components:
       - id
       - name
       - updated_at
+    AccountTypeEnum:
+      enum:
+      - checking
+      - savings
+      - credit_card
+      - investment
+      - loan
+      - other
+      type: string
+      description: |-
+        * `checking` - Checking
+        * `savings` - Savings
+        * `credit_card` - Credit Card
+        * `investment` - Investment
+        * `loan` - Loan
+        * `other` - Other
     FileUpload:
       type: object
       properties:
         id:
           type: integer
           readOnly: true
-        headers:
-          type: string
+        account:
+          allOf:
+          - $ref: '#/components/schemas/Account'
           readOnly: true
+        account_id:
+          type: integer
+          writeOnly: true
         filename:
           type: string
           maxLength: 255
+        headers:
+          type: string
+          readOnly: true
         transaction_count:
           type: integer
           maximum: 2147483647
@@ -671,15 +1349,101 @@ components:
           type: string
           format: date-time
           readOnly: true
-        account:
-          type: integer
       required:
       - account
+      - account_id
       - created_at
       - filename
       - headers
       - id
       - updated_at
+    LocationClassification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        type:
+          $ref: '#/components/schemas/LocationClassificationTypeEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - type
+      - updated_at
+    LocationClassificationTypeEnum:
+      enum:
+      - income
+      - expense
+      - transfer
+      type: string
+      description: |-
+        * `income` - Income
+        * `expense` - Expense
+        * `transfer` - Transfer
+    LocationSubClassification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        location_classification:
+          allOf:
+          - $ref: '#/components/schemas/LocationClassification'
+          readOnly: true
+        location_classification_id:
+          type: integer
+          writeOnly: true
+        name:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - location_classification
+      - location_classification_id
+      - name
+      - updated_at
+    PaginatedTransactionList:
+      type: object
+      properties:
+        count:
+          type: integer
+        total_pages:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
     PatchedAccount:
       type: object
       properties:
@@ -690,7 +1454,7 @@ components:
           type: string
           maxLength: 255
         type:
-          $ref: '#/components/schemas/TypeEnum'
+          $ref: '#/components/schemas/AccountTypeEnum'
         file_upload_schema:
           nullable: true
         created_at:
@@ -707,12 +1471,19 @@ components:
         id:
           type: integer
           readOnly: true
-        headers:
-          type: string
+        account:
+          allOf:
+          - $ref: '#/components/schemas/Account'
           readOnly: true
+        account_id:
+          type: integer
+          writeOnly: true
         filename:
           type: string
           maxLength: 255
+        headers:
+          type: string
+          readOnly: true
         transaction_count:
           type: integer
           maximum: 2147483647
@@ -730,14 +1501,104 @@ components:
           type: string
           format: date-time
           readOnly: true
-        account:
+    PatchedLocationClassification:
+      type: object
+      properties:
+        id:
           type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        type:
+          $ref: '#/components/schemas/LocationClassificationTypeEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedLocationSubClassification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        location_classification:
+          allOf:
+          - $ref: '#/components/schemas/LocationClassification'
+          readOnly: true
+        location_classification_id:
+          type: integer
+          writeOnly: true
+        name:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPersonClassification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTimeClassification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedTransaction:
       type: object
       properties:
         id:
           type: integer
           readOnly: true
+        account:
+          allOf:
+          - $ref: '#/components/schemas/Account'
+          readOnly: true
+        account_id:
+          type: integer
+          writeOnly: true
+        file_upload:
+          allOf:
+          - $ref: '#/components/schemas/FileUpload'
+          readOnly: true
+        file_upload_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         transaction_date:
           type: string
           format: date-time
@@ -768,6 +1629,18 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
         raw_data: {}
+        location_classification:
+          type: integer
+          nullable: true
+        location_subclassification:
+          type: integer
+          nullable: true
+        time_classification:
+          type: integer
+          nullable: true
+        person_classification:
+          type: integer
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -776,11 +1649,28 @@ components:
           type: string
           format: date-time
           readOnly: true
-        account:
+    PersonClassification:
+      type: object
+      properties:
+        id:
           type: integer
-        file_upload:
-          type: integer
-          nullable: true
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
     StatusEnum:
       enum:
       - pending
@@ -793,12 +1683,49 @@ components:
         * `processing` - Processing
         * `completed` - Completed
         * `failed` - Failed
+    TimeClassification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
     Transaction:
       type: object
       properties:
         id:
           type: integer
           readOnly: true
+        account:
+          allOf:
+          - $ref: '#/components/schemas/Account'
+          readOnly: true
+        account_id:
+          type: integer
+          writeOnly: true
+        file_upload:
+          allOf:
+          - $ref: '#/components/schemas/FileUpload'
+          readOnly: true
+        file_upload_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         transaction_date:
           type: string
           format: date-time
@@ -829,6 +1756,18 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
         raw_data: {}
+        location_classification:
+          type: integer
+          nullable: true
+        location_subclassification:
+          type: integer
+          nullable: true
+        time_classification:
+          type: integer
+          nullable: true
+        person_classification:
+          type: integer
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -837,33 +1776,14 @@ components:
           type: string
           format: date-time
           readOnly: true
-        account:
-          type: integer
-        file_upload:
-          type: integer
-          nullable: true
       required:
       - account
+      - account_id
       - created_at
+      - file_upload
       - id
       - raw_data
       - updated_at
-    TypeEnum:
-      enum:
-      - checking
-      - savings
-      - credit_card
-      - investment
-      - loan
-      - other
-      type: string
-      description: |-
-        * `checking` - Checking
-        * `savings` - Savings
-        * `credit_card` - Credit Card
-        * `investment` - Investment
-        * `loan` - Loan
-        * `other` - Other
   securitySchemes:
     basicAuth:
       type: http

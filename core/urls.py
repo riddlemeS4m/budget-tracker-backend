@@ -18,11 +18,15 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from rest_framework.routers import DefaultRouter
-from budget.views import AccountViewSet, FileUploadViewSet, TransactionListView, TransactionDetailView
+from budget.views import AccountViewSet, FileUploadViewSet, TransactionListView, TransactionDetailView, LocationClassificationViewSet, LocationSubClassificationViewSet, TimeClassificationViewSet, PersonClassificationViewSet
 
 router = DefaultRouter()
 router.register(r'accounts', AccountViewSet)
 router.register(r'file-uploads', FileUploadViewSet)
+router.register(r'location-classifications', LocationClassificationViewSet)
+router.register(r'location-subclassifications', LocationSubClassificationViewSet)
+router.register(r'time-classifications', TimeClassificationViewSet)
+router.register(r'person-classifications', PersonClassificationViewSet)
 
 api_v1_patterns = [
     path('', include(router.urls)),
