@@ -501,6 +501,22 @@ paths:
   /api/v1/location-subclassifications/:
     get:
       operationId: location_subclassifications_list
+      parameters:
+      - in: query
+        name: location_classification
+        schema:
+          type: integer
+        description: Filter by location classification ID
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by name (case-insensitive substring match)
+      - in: query
+        name: type
+        schema:
+          type: string
+        description: Filter by location classification type (income, expense, transfer)
       tags:
       - location-subclassifications
       security:

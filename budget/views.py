@@ -163,10 +163,37 @@ class LocationClassificationViewSet(viewsets.ModelViewSet):
 
 
 class LocationSubClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationSubClassification.objects.annotate(
-        transaction_count=Count('transactions', distinct=True),
-    ).order_by('name')
+    queryset = LocationSubClassification.objects.none()
     serializer_class = LocationSubClassificationSerializer
+
+    def get_queryset(self):
+        queryset = LocationSubClassification.objects.annotate(
+            transaction_count=Count('transactions', distinct=True),
+        ).order_by('name')
+
+        location_classification_id = self.request.query_params.get('location_classification')
+        if location_classification_id:
+            queryset = queryset.filter(location_classification_id=int(location_classification_id))
+
+        type_ = self.request.query_params.get('type')
+        if type_:
+            queryset = queryset.filter(location_classification__type=type_)
+
+        name = self.request.query_params.get('name')
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+
+        return queryset
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='location_classification', type=int, location='query', required=False, description='Filter by location classification ID'),
+            OpenApiParameter(name='type', type=str, location='query', required=False, description='Filter by location classification type (income, expense, transfer)'),
+            OpenApiParameter(name='name', type=str, location='query', required=False, description='Filter by name (case-insensitive substring match)'),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class TimeClassificationViewSet(viewsets.ModelViewSet):
