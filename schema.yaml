@@ -1278,6 +1278,16 @@ paths:
           type: integer
         description: Filter by file upload ID
       - in: query
+        name: location_classification
+        schema:
+          type: integer
+        description: Filter by location classification ID
+      - in: query
+        name: location_subclassification
+        schema:
+          type: integer
+        description: Filter by location subclassification ID
+      - in: query
         name: page
         schema:
           type: integer
@@ -1288,12 +1298,22 @@ paths:
           type: integer
         description: Items per page
       - in: query
+        name: person_classification
+        schema:
+          type: integer
+        description: Filter by person classification ID
+      - in: query
         name: sort_by
         schema:
           type: string
         description: 'Sort field, optionally prefixed with ''-'' for descending (e.g.
           ''-amount''). Allowed values: id, account__name, transaction_date, description,
           amount, category, subcategory. Defaults to -created_at.'
+      - in: query
+        name: time_classification
+        schema:
+          type: integer
+        description: Filter by time classification ID
       - in: query
         name: transaction_date_from
         schema:

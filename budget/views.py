@@ -185,6 +185,10 @@ class TransactionListView(APIView):
             OpenApiParameter(name="transaction_date_to", type=str, location="query", required=False, description="Filter transactions on or before this date (ISO 8601, e.g. 2025-12-31)"),
             OpenApiParameter(name="description", type=str, location="query", required=False, description="Filter by description (case-insensitive substring match)"),
             OpenApiParameter(name="sort_by", type=str, location="query", required=False, description="Sort field, optionally prefixed with '-' for descending (e.g. '-amount'). Allowed values: id, account__name, transaction_date, description, amount, category, subcategory. Defaults to -created_at."),
+            OpenApiParameter(name="location_classification", type=int, location="query", required=False, description="Filter by location classification ID"),
+            OpenApiParameter(name="location_subclassification", type=int, location="query", required=False, description="Filter by location subclassification ID"),
+            OpenApiParameter(name="time_classification", type=int, location="query", required=False, description="Filter by time classification ID"),
+            OpenApiParameter(name="person_classification", type=int, location="query", required=False, description="Filter by person classification ID"),
         ],
         responses=inline_serializer(
             name='PaginatedTransactionList',
@@ -219,6 +223,22 @@ class TransactionListView(APIView):
         description = request.query_params.get("description")
         if description:
             transactions = transactions.filter(description__icontains=description)
+
+        location_classification_id = request.query_params.get("location_classification")
+        if location_classification_id:
+            transactions = transactions.filter(location_classification_id=int(location_classification_id))
+
+        location_subclassification_id = request.query_params.get("location_subclassification")
+        if location_subclassification_id:
+            transactions = transactions.filter(location_subclassification_id=int(location_subclassification_id))
+
+        time_classification_id = request.query_params.get("time_classification")
+        if time_classification_id:
+            transactions = transactions.filter(time_classification_id=int(time_classification_id))
+
+        person_classification_id = request.query_params.get("person_classification")
+        if person_classification_id:
+            transactions = transactions.filter(person_classification_id=int(person_classification_id))
 
         sort_by = request.query_params.get("sort_by", "-created_at")
         direction = ""
