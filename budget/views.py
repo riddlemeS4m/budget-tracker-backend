@@ -1,6 +1,9 @@
 import csv
 import io
-from django.db.models import Count
+from collections import defaultdict
+from decimal import Decimal
+from django.db.models import Count, Sum, F as models_F
+from django.db.models.functions import TruncMonth
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -416,3 +419,292 @@ class TransactionExportView(APIView):
 class StatementViewSet(viewsets.ModelViewSet):
     queryset = Statement.objects.order_by('id')
     serializer_class = StatementSerializer
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+
+def _build_summary_sections(rows):
+    """
+    Given aggregated rows of the form:
+        {
+            'cls_id': int | None,
+            'cls_name': str | None,
+            'cls_type': str | None,
+            'sub_id': int | None,
+            'sub_name': str | None,
+            'total': Decimal,
+        }
+    assemble the two-level hierarchy expected by both report modes.
+    Returns (sections, total_revenues, total_expenses).
+    """
+    # Organise rows: type -> category -> subcategory -> total
+    tree = {}  # type -> {cat_key -> {sub_key -> total}}
+    cat_meta = {}   # cat_key -> {id, name, type}
+    sub_meta = {}   # sub_key -> {id, name}
+
+    UNCLASSIFIED_CAT = (None, "Unclassified")
+    UNCATEGORIZED_SUB = (None, "Uncategorized")
+
+    for row in rows:
+        cls_type = row['cls_type'] or 'expense'
+        cat_key = (row['cls_id'], row['cls_name'] or 'Unclassified')
+        sub_key = (row['sub_id'], row['sub_name'] or 'Uncategorized')
+        total = row['total'] or Decimal('0')
+
+        if cls_type not in tree:
+            tree[cls_type] = {}
+        if cat_key not in tree[cls_type]:
+            tree[cls_type][cat_key] = {}
+            cat_meta[cat_key] = {'id': row['cls_id'], 'name': cat_key[1], 'type': cls_type}
+        tree[cls_type][cat_key][sub_key] = tree[cls_type][cat_key].get(sub_key, Decimal('0')) + total
+        sub_meta[sub_key] = {'id': row['sub_id'], 'name': sub_key[1]}
+
+    sections = []
+    section_defs = [
+        ('income', 'Revenues'),
+        ('expense', 'Expenses'),
+    ]
+    total_revenues = Decimal('0')
+    total_expenses = Decimal('0')
+
+    for cls_type, label in section_defs:
+        categories = []
+        section_total = Decimal('0')
+
+        for cat_key, subs in sorted(tree.get(cls_type, {}).items(), key=lambda x: (x[0][0] is None, x[0][0])):
+            cat_total = Decimal('0')
+            subcategories = []
+            for sub_key, total in sorted(subs.items(), key=lambda x: (x[0][0] is None, x[0][0])):
+                subcategories.append({
+                    'id': sub_meta[sub_key]['id'],
+                    'name': sub_meta[sub_key]['name'],
+                    'total': str(total),
+                })
+                cat_total += total
+            categories.append({
+                'id': cat_meta[cat_key]['id'],
+                'name': cat_meta[cat_key]['name'],
+                'subcategories': subcategories,
+                'total': str(cat_total),
+            })
+            section_total += cat_total
+
+        sections.append({
+            'type': cls_type,
+            'label': label,
+            'categories': categories,
+            'total': str(section_total),
+        })
+
+        if cls_type == 'income':
+            total_revenues = section_total
+        elif cls_type == 'expense':
+            total_expenses = section_total
+
+    return sections, total_revenues, total_expenses
+
+
+class CashFlowStatementViewSet(viewsets.ViewSet):
+    """
+    Reports viewset for cash flow statement.
+    Provides two actions:
+      - summary: single-period totals (for Exploration)
+      - monthly: 12-month breakdown + YTD (for Audit)
+    """
+
+    @extend_schema(
+        operation_id='cash_flow_statement_summary',
+        parameters=[
+            OpenApiParameter(name='date_from', type=str, location='query', required=False,
+                             description='Start date (ISO 8601, e.g. 2025-01-01)'),
+            OpenApiParameter(name='date_to', type=str, location='query', required=False,
+                             description='End date (ISO 8601, e.g. 2025-12-31)'),
+        ],
+        responses={200: inline_serializer(
+            name='CashFlowStatementSummary',
+            fields={
+                'date_from': drf_fields.CharField(allow_null=True),
+                'date_to': drf_fields.CharField(allow_null=True),
+                'sections': drf_fields.ListField(child=drf_fields.DictField()),
+                'total_revenues': drf_fields.CharField(),
+                'total_expenses': drf_fields.CharField(),
+                'net_income': drf_fields.CharField(),
+            },
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """GET /api/v1/reports/cash-flow-statement/summary/"""
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        qs = Transaction.objects.filter(
+            location_classification__type__in=['income', 'expense'],
+        )
+        if date_from:
+            qs = qs.filter(transaction_date__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(transaction_date__date__lte=date_to)
+
+        rows = qs.values(
+            cls_id=models_F('location_classification__id'),
+            cls_name=models_F('location_classification__name'),
+            cls_type=models_F('location_classification__type'),
+            sub_id=models_F('location_subclassification__id'),
+            sub_name=models_F('location_subclassification__name'),
+        ).annotate(total=Sum('amount'))
+
+        sections, total_revenues, total_expenses = _build_summary_sections(rows)
+
+        return Response({
+            'date_from': date_from,
+            'date_to': date_to,
+            'sections': sections,
+            'total_revenues': str(total_revenues),
+            'total_expenses': str(total_expenses),
+            'net_income': str(total_revenues + total_expenses),
+        })
+
+    @extend_schema(
+        operation_id='cash_flow_statement_monthly',
+        parameters=[
+            OpenApiParameter(name='year', type=int, location='query', required=True,
+                             description='The calendar year (e.g. 2025)'),
+        ],
+        responses={200: inline_serializer(
+            name='CashFlowStatementMonthly',
+            fields={
+                'year': drf_fields.IntegerField(),
+                'months': drf_fields.ListField(child=drf_fields.CharField()),
+                'sections': drf_fields.ListField(child=drf_fields.DictField()),
+                'total_revenues': drf_fields.DictField(),
+                'total_expenses': drf_fields.DictField(),
+                'net_income': drf_fields.DictField(),
+            },
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='monthly')
+    def monthly(self, request):
+        """GET /api/v1/reports/cash-flow-statement/monthly/?year=2025"""
+        year_param = request.query_params.get('year')
+        if not year_param:
+            return Response({'detail': 'year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year_param)
+        except ValueError:
+            return Response({'detail': 'year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+        qs = Transaction.objects.filter(
+            location_classification__type__in=['income', 'expense'],
+            transaction_date__year=year,
+        )
+
+        raw_rows = qs.annotate(
+            month=TruncMonth('transaction_date'),
+        ).values(
+            'month',
+            cls_id=models_F('location_classification__id'),
+            cls_name=models_F('location_classification__name'),
+            cls_type=models_F('location_classification__type'),
+            sub_id=models_F('location_subclassification__id'),
+            sub_name=models_F('location_subclassification__name'),
+        ).annotate(total=Sum('amount'))
+
+        # Pivot: (cls_type, cat_key, sub_key) -> month_index -> total
+        pivot = defaultdict(lambda: defaultdict(Decimal))
+        cat_meta = {}
+        sub_meta = {}
+
+        for row in raw_rows:
+            cls_type = row['cls_type'] or 'expense'
+            cat_key = (row['cls_id'], row['cls_name'] or 'Unclassified')
+            sub_key = (row['sub_id'], row['sub_name'] or 'Uncategorized')
+            month_idx = row['month'].month  # 1-12
+            total = row['total'] or Decimal('0')
+
+            pivot_key = (cls_type, cat_key, sub_key)
+            pivot[pivot_key][month_idx] += total
+
+            cat_meta[cat_key] = {'id': row['cls_id'], 'name': cat_key[1], 'type': cls_type}
+            sub_meta[sub_key] = {'id': row['sub_id'], 'name': sub_key[1]}
+
+        def zero_months():
+            return {m: Decimal('0') for m in range(1, 13)}
+
+        def months_to_response(month_dict):
+            return {str(m): str(month_dict.get(m, Decimal('0'))) for m in range(1, 13)}
+
+        def ytd(month_dict):
+            return str(sum(month_dict.values(), Decimal('0')))
+
+        # Build sections
+        sections = []
+        section_defs = [('income', 'Revenues'), ('expense', 'Expenses')]
+        total_rev_months = zero_months()
+        total_exp_months = zero_months()
+
+        for cls_type, label in section_defs:
+            # Collect categories for this section
+            cats_map = defaultdict(lambda: {'subs': {}, 'months': zero_months()})
+
+            for (pt, cat_key, sub_key), month_totals in pivot.items():
+                if pt != cls_type:
+                    continue
+                for m, total in month_totals.items():
+                    cats_map[cat_key]['months'][m] += total
+                    cats_map[cat_key]['subs'].setdefault(sub_key, zero_months())
+                    cats_map[cat_key]['subs'][sub_key][m] += total
+
+            section_months = zero_months()
+            categories = []
+            for cat_key, cat_data in sorted(cats_map.items(), key=lambda x: (x[0][0] is None, x[0][0])):
+                sub_list = []
+                for sub_key, sub_months in sorted(cat_data['subs'].items(), key=lambda x: (x[0][0] is None, x[0][0])):
+                    sub_list.append({
+                        'id': sub_meta[sub_key]['id'],
+                        'name': sub_meta[sub_key]['name'],
+                        'months': months_to_response(sub_months),
+                        'ytd': ytd(sub_months),
+                    })
+                cat_months = cat_data['months']
+                categories.append({
+                    'id': cat_meta[cat_key]['id'],
+                    'name': cat_meta[cat_key]['name'],
+                    'subcategories': sub_list,
+                    'months': months_to_response(cat_months),
+                    'ytd': ytd(cat_months),
+                })
+                for m, v in cat_months.items():
+                    section_months[m] += v
+
+            sections.append({
+                'type': cls_type,
+                'label': label,
+                'categories': categories,
+                'months': months_to_response(section_months),
+                'ytd': ytd(section_months),
+            })
+
+            if cls_type == 'income':
+                for m, v in section_months.items():
+                    total_rev_months[m] += v
+            elif cls_type == 'expense':
+                for m, v in section_months.items():
+                    total_exp_months[m] += v
+
+        net_months = {m: total_rev_months[m] + total_exp_months[m] for m in range(1, 13)}
+
+        return Response({
+            'year': year,
+            'months': MONTH_LABELS,
+            'sections': sections,
+            'total_revenues': {'months': months_to_response(total_rev_months), 'ytd': ytd(total_rev_months)},
+            'total_expenses': {'months': months_to_response(total_exp_months), 'ytd': ytd(total_exp_months)},
+            'net_income': {'months': months_to_response(net_months), 'ytd': ytd(net_months)},
+        })
