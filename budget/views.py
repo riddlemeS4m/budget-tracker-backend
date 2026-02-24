@@ -154,22 +154,22 @@ class FileUploadViewSet(viewsets.ModelViewSet):
     
 
 class LocationClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationClassification.objects.order_by('id')
+    queryset = LocationClassification.objects.order_by('name')
     serializer_class = LocationClassificationSerializer
 
 
 class LocationSubClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationSubClassification.objects.order_by('id')
+    queryset = LocationSubClassification.objects.order_by('name')
     serializer_class = LocationSubClassificationSerializer
 
 
 class TimeClassificationViewSet(viewsets.ModelViewSet):
-    queryset = TimeClassification.objects.order_by('id')
+    queryset = TimeClassification.objects.order_by('name')
     serializer_class = TimeClassificationSerializer
 
 
 class PersonClassificationViewSet(viewsets.ModelViewSet):
-    queryset = PersonClassification.objects.order_by('id')
+    queryset = PersonClassification.objects.order_by('name')
     serializer_class = PersonClassificationSerializer
 
 
