@@ -38,12 +38,12 @@ ALLOWED_SORT_FIELDS = {
 
 
 class AccountViewSet(viewsets.ModelViewSet):
-    queryset = Account.objects.all()
+    queryset = Account.objects.order_by('id')
     serializer_class = AccountSerializer
 
 
 class FileUploadViewSet(viewsets.ModelViewSet):
-    queryset = FileUpload.objects.all()
+    queryset = FileUpload.objects.order_by('id')
     serializer_class = FileUploadSerializer
 
     def get_parsers(self):
@@ -151,22 +151,22 @@ class FileUploadViewSet(viewsets.ModelViewSet):
     
 
 class LocationClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationClassification.objects.all()
+    queryset = LocationClassification.objects.order_by('id')
     serializer_class = LocationClassificationSerializer
 
 
 class LocationSubClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationSubClassification.objects.all()
+    queryset = LocationSubClassification.objects.order_by('id')
     serializer_class = LocationSubClassificationSerializer
 
 
 class TimeClassificationViewSet(viewsets.ModelViewSet):
-    queryset = TimeClassification.objects.all()
+    queryset = TimeClassification.objects.order_by('id')
     serializer_class = TimeClassificationSerializer
-    
+
 
 class PersonClassificationViewSet(viewsets.ModelViewSet):
-    queryset = PersonClassification.objects.all()
+    queryset = PersonClassification.objects.order_by('id')
     serializer_class = PersonClassificationSerializer
 
 
@@ -283,5 +283,5 @@ class TransactionDetailView(APIView):
 
 
 class StatementViewSet(viewsets.ModelViewSet):
-    queryset = Statement.objects.all()
+    queryset = Statement.objects.order_by('id')
     serializer_class = StatementSerializer
