@@ -163,7 +163,9 @@ class LocationClassificationViewSet(viewsets.ModelViewSet):
 
 
 class LocationSubClassificationViewSet(viewsets.ModelViewSet):
-    queryset = LocationSubClassification.objects.order_by('name')
+    queryset = LocationSubClassification.objects.annotate(
+        transaction_count=Count('transactions', distinct=True),
+    ).order_by('name')
     serializer_class = LocationSubClassificationSerializer
 
 

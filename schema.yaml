@@ -1656,6 +1656,10 @@ components:
         name:
           type: string
           maxLength: 255
+        transaction_count:
+          type: integer
+          readOnly: true
+          default: 0
         created_at:
           type: string
           format: date-time
@@ -1670,6 +1674,7 @@ components:
       - location_classification
       - location_classification_id
       - name
+      - transaction_count
       - updated_at
     PaginatedTransactionList:
       type: object
@@ -1792,6 +1797,10 @@ components:
         name:
           type: string
           maxLength: 255
+        transaction_count:
+          type: integer
+          readOnly: true
+          default: 0
         created_at:
           type: string
           format: date-time

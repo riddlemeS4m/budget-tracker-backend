@@ -61,12 +61,13 @@ class LocationSubClassificationSerializer(serializers.ModelSerializer):
         source='location_classification',
         write_only=True,
     )
+    transaction_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = LocationSubClassification
         fields = [
             'id', 'location_classification', 'location_classification_id',
-            'name', 'created_at', 'updated_at',
+            'name', 'transaction_count', 'created_at', 'updated_at',
         ]
 
 
