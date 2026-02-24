@@ -951,6 +951,159 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/statements/:
+    get:
+      operationId: statements_list
+      tags:
+      - statements
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Statement'
+          description: ''
+    post:
+      operationId: statements_create
+      tags:
+      - statements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Statement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Statement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Statement'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+          description: ''
+  /api/v1/statements/{id}/:
+    get:
+      operationId: statements_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this statement.
+        required: true
+      tags:
+      - statements
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+          description: ''
+    put:
+      operationId: statements_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this statement.
+        required: true
+      tags:
+      - statements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Statement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Statement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Statement'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+          description: ''
+    patch:
+      operationId: statements_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this statement.
+        required: true
+      tags:
+      - statements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStatement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStatement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStatement'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statement'
+          description: ''
+    delete:
+      operationId: statements_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this statement.
+        required: true
+      tags:
+      - statements
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/v1/time-classifications/:
     get:
       operationId: time_classifications_list
@@ -1561,6 +1714,43 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedStatement:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        account:
+          allOf:
+          - $ref: '#/components/schemas/Account'
+          readOnly: true
+        account_id:
+          type: integer
+          writeOnly: true
+        period_start:
+          type: string
+          format: date
+          nullable: true
+        period_end:
+          type: string
+          format: date
+        opening_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        closing_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedTimeClassification:
       type: object
       properties:
@@ -1670,6 +1860,51 @@ components:
       - created_at
       - id
       - name
+      - updated_at
+    Statement:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        account:
+          allOf:
+          - $ref: '#/components/schemas/Account'
+          readOnly: true
+        account_id:
+          type: integer
+          writeOnly: true
+        period_start:
+          type: string
+          format: date
+          nullable: true
+        period_end:
+          type: string
+          format: date
+        opening_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        closing_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - account
+      - account_id
+      - closing_balance
+      - created_at
+      - id
+      - period_end
       - updated_at
     StatusEnum:
       enum:

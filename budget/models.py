@@ -131,3 +131,20 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.account} - {self.transaction_date} - {self.description}"
+
+
+class Statement(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='statements')
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField()
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    closing_balance = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-period_end"]
+        constraints = [models.UniqueConstraint(fields=['account', 'period_end'], name='unique_statement_per_period')]
+
+    def __str__(self):
+        return f"{self.account} — {self.period_end}"

@@ -1,5 +1,14 @@
 from rest_framework import serializers
-from .models import Account, FileUpload, Transaction, LocationClassification, LocationSubClassification, TimeClassification, PersonClassification
+from .models import (
+    Account,
+    FileUpload,
+    Transaction,
+    LocationClassification,
+    LocationSubClassification,
+    TimeClassification,
+    PersonClassification,
+    Statement,
+)
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -99,4 +108,22 @@ class TransactionSerializer(serializers.ModelSerializer):
             'location_classification', 'location_subclassification',
             'time_classification', 'person_classification',
             'created_at', 'updated_at',
+        ]
+
+
+class StatementSerializer(serializers.ModelSerializer):
+    # Read: full nested Account object
+    account = AccountSerializer(read_only=True)
+    # Write: accept an integer account ID
+    account_id = serializers.PrimaryKeyRelatedField(
+        queryset=Account.objects.all(),
+        source='account',
+        write_only=True,
+    )
+
+    class Meta:
+        model = Statement
+        fields = [
+            'id', 'account', 'account_id', 'period_start', 'period_end',
+            'opening_balance', 'closing_balance', 'created_at', 'updated_at',
         ]

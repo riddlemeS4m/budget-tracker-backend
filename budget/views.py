@@ -7,8 +7,26 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
 from rest_framework import fields as drf_fields
-from .models import Account, FileUpload, Transaction, LocationClassification, LocationSubClassification, TimeClassification, PersonClassification
-from .serializers import AccountSerializer, FileUploadSerializer, TransactionSerializer, LocationClassificationSerializer, LocationSubClassificationSerializer, TimeClassificationSerializer, PersonClassificationSerializer
+from .models import (
+    Account,
+    FileUpload,
+    Transaction,
+    LocationClassification,
+    LocationSubClassification,
+    TimeClassification,
+    PersonClassification,
+    Statement,
+)
+from .serializers import (
+    AccountSerializer,
+    FileUploadSerializer,
+    TransactionSerializer,
+    LocationClassificationSerializer,
+    LocationSubClassificationSerializer,
+    TimeClassificationSerializer,
+    PersonClassificationSerializer,
+    StatementSerializer,
+)
 from .csv_utils import parse_csv, apply_schema_to_transaction
 
 TRANSACTIONS_DEFAULT_PAGE_SIZE = 100
@@ -262,3 +280,8 @@ class TransactionDetailView(APIView):
         transaction = get_object_or_404(Transaction, pk=pk)
         transaction.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StatementViewSet(viewsets.ModelViewSet):
+    queryset = Statement.objects.all()
+    serializer_class = StatementSerializer
