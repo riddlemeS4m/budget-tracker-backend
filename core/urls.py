@@ -23,6 +23,7 @@ from budget.views import (
     FileUploadViewSet,
     TransactionListView,
     TransactionDetailView,
+    TransactionExportView,
     LocationClassificationViewSet,
     LocationSubClassificationViewSet,
     TimeClassificationViewSet,
@@ -42,6 +43,7 @@ router.register(r'statements', StatementViewSet)
 api_v1_patterns = [
     path('', include(router.urls)),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
+    path('transactions/export/', TransactionExportView.as_view(), name='transaction-export'),
     path('transactions/<int:pk>/', TransactionDetailView.as_view(), name='transaction-detail'),
     
     # Schema and docs

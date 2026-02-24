@@ -1,9 +1,12 @@
+import csv
+import io
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.core.paginator import Paginator
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
 from rest_framework import fields as drf_fields
@@ -170,6 +173,58 @@ class PersonClassificationViewSet(viewsets.ModelViewSet):
     serializer_class = PersonClassificationSerializer
 
 
+def _apply_transaction_filters(queryset, query_params):
+    """Apply filter and sort query params to a Transaction queryset."""
+    account_id = query_params.get("account")
+    if account_id:
+        queryset = queryset.filter(account_id=int(account_id))
+
+    file_upload_id = query_params.get("file_upload")
+    if file_upload_id:
+        queryset = queryset.filter(file_upload_id=int(file_upload_id))
+
+    transaction_date_from = query_params.get("transaction_date_from")
+    if transaction_date_from:
+        queryset = queryset.filter(transaction_date__date__gte=transaction_date_from)
+
+    transaction_date_to = query_params.get("transaction_date_to")
+    if transaction_date_to:
+        queryset = queryset.filter(transaction_date__date__lte=transaction_date_to)
+
+    description = query_params.get("description")
+    if description:
+        queryset = queryset.filter(description__icontains=description)
+
+    location_classification_id = query_params.get("location_classification")
+    if location_classification_id:
+        queryset = queryset.filter(location_classification_id=int(location_classification_id))
+
+    location_subclassification_id = query_params.get("location_subclassification")
+    if location_subclassification_id:
+        queryset = queryset.filter(location_subclassification_id=int(location_subclassification_id))
+
+    time_classification_id = query_params.get("time_classification")
+    if time_classification_id:
+        queryset = queryset.filter(time_classification_id=int(time_classification_id))
+
+    person_classification_id = query_params.get("person_classification")
+    if person_classification_id:
+        queryset = queryset.filter(person_classification_id=int(person_classification_id))
+
+    sort_by = query_params.get("sort_by", "-created_at")
+    direction = ""
+    field = sort_by
+    if sort_by.startswith("-"):
+        direction = "-"
+        field = sort_by[1:]
+    if field in ALLOWED_SORT_FIELDS:
+        queryset = queryset.order_by(f"{direction}{field}")
+    else:
+        queryset = queryset.order_by("-created_at")
+
+    return queryset
+
+
 class TransactionListView(APIView):
     """Handles GET /transactions/ and POST /transactions/"""
     serializer_class = TransactionSerializer
@@ -202,54 +257,7 @@ class TransactionListView(APIView):
         ),
     )
     def get(self, request):
-        transactions = Transaction.objects.all()
-
-        account_id = request.query_params.get("account")
-        if account_id:
-            transactions = transactions.filter(account_id=int(account_id))
-
-        file_upload_id = request.query_params.get("file_upload")
-        if file_upload_id:
-            transactions = transactions.filter(file_upload_id=int(file_upload_id))
-
-        transaction_date_from = request.query_params.get("transaction_date_from")
-        if transaction_date_from:
-            transactions = transactions.filter(transaction_date__date__gte=transaction_date_from)
-
-        transaction_date_to = request.query_params.get("transaction_date_to")
-        if transaction_date_to:
-            transactions = transactions.filter(transaction_date__date__lte=transaction_date_to)
-
-        description = request.query_params.get("description")
-        if description:
-            transactions = transactions.filter(description__icontains=description)
-
-        location_classification_id = request.query_params.get("location_classification")
-        if location_classification_id:
-            transactions = transactions.filter(location_classification_id=int(location_classification_id))
-
-        location_subclassification_id = request.query_params.get("location_subclassification")
-        if location_subclassification_id:
-            transactions = transactions.filter(location_subclassification_id=int(location_subclassification_id))
-
-        time_classification_id = request.query_params.get("time_classification")
-        if time_classification_id:
-            transactions = transactions.filter(time_classification_id=int(time_classification_id))
-
-        person_classification_id = request.query_params.get("person_classification")
-        if person_classification_id:
-            transactions = transactions.filter(person_classification_id=int(person_classification_id))
-
-        sort_by = request.query_params.get("sort_by", "-created_at")
-        direction = ""
-        field = sort_by
-        if sort_by.startswith("-"):
-            direction = "-"
-            field = sort_by[1:]
-        if field in ALLOWED_SORT_FIELDS:
-            transactions = transactions.order_by(f"{direction}{field}")
-        else:
-            transactions = transactions.order_by("-created_at")
+        transactions = _apply_transaction_filters(Transaction.objects.all(), request.query_params)
 
         page_size = int(request.query_params.get("page_size", TRANSACTIONS_DEFAULT_PAGE_SIZE))
         page_number = int(request.query_params.get("page", 1))
@@ -300,6 +308,76 @@ class TransactionDetailView(APIView):
         transaction = get_object_or_404(Transaction, pk=pk)
         transaction.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TransactionExportView(APIView):
+    """Handles GET /transactions/export/ — streams all matching transactions as a CSV file."""
+
+    @extend_schema(
+        operation_id="transactions_export",
+        parameters=[
+            OpenApiParameter(name="account", type=int, location="query", required=False, description="Filter by account ID"),
+            OpenApiParameter(name="file_upload", type=int, location="query", required=False, description="Filter by file upload ID"),
+            OpenApiParameter(name="transaction_date_from", type=str, location="query", required=False, description="Filter transactions on or after this date (ISO 8601)"),
+            OpenApiParameter(name="transaction_date_to", type=str, location="query", required=False, description="Filter transactions on or before this date (ISO 8601)"),
+            OpenApiParameter(name="description", type=str, location="query", required=False, description="Filter by description (case-insensitive substring match)"),
+            OpenApiParameter(name="sort_by", type=str, location="query", required=False, description="Sort field, optionally prefixed with '-' for descending"),
+            OpenApiParameter(name="location_classification", type=int, location="query", required=False, description="Filter by location classification ID"),
+            OpenApiParameter(name="location_subclassification", type=int, location="query", required=False, description="Filter by location subclassification ID"),
+            OpenApiParameter(name="time_classification", type=int, location="query", required=False, description="Filter by time classification ID"),
+            OpenApiParameter(name="person_classification", type=int, location="query", required=False, description="Filter by person classification ID"),
+        ],
+        responses={200: None},
+    )
+    def get(self, request):
+        transactions = _apply_transaction_filters(
+            Transaction.objects.select_related(
+                "account",
+                "location_classification",
+                "location_subclassification",
+                "time_classification",
+                "person_classification",
+            ),
+            request.query_params,
+        )
+
+        def _name(obj):
+            return obj.name if obj is not None else ""
+
+        def stream_csv():
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow([
+                "ID", "Account", "Transaction Date", "Posted Date",
+                "Description", "Description 2", "Category", "Subcategory",
+                "Amount", "Location Classification", "Location Subclassification",
+                "Time Classification", "Person Classification",
+            ])
+            yield buffer.getvalue()
+
+            for tx in transactions.iterator():
+                buffer = io.StringIO()
+                writer = csv.writer(buffer)
+                writer.writerow([
+                    tx.id,
+                    tx.account.name if tx.account else "",
+                    tx.transaction_date.isoformat() if tx.transaction_date else "",
+                    tx.posted_date.isoformat() if tx.posted_date else "",
+                    tx.description or "",
+                    tx.description_2 or "",
+                    tx.category or "",
+                    tx.subcategory or "",
+                    tx.amount if tx.amount is not None else "",
+                    _name(tx.location_classification),
+                    _name(tx.location_subclassification),
+                    _name(tx.time_classification),
+                    _name(tx.person_classification),
+                ])
+                yield buffer.getvalue()
+
+        response = StreamingHttpResponse(stream_csv(), content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="transactions.csv"'
+        return response
 
 
 class StatementViewSet(viewsets.ModelViewSet):
