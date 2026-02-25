@@ -1027,6 +1027,24 @@ paths:
   /api/v1/statements/:
     get:
       operationId: statements_list
+      parameters:
+      - in: query
+        name: account
+        schema:
+          type: integer
+        description: Filter by account ID
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Filter statements with period_end on or after this date (ISO
+          8601, e.g. 2025-01-01)
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: Filter statements with period_end on or before this date (ISO
+          8601, e.g. 2025-12-31)
       tags:
       - statements
       security:

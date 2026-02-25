@@ -455,8 +455,38 @@ class TransactionExportView(APIView):
 
 
 class StatementViewSet(viewsets.ModelViewSet):
-    queryset = Statement.objects.order_by('id')
+    queryset = Statement.objects.none()
     serializer_class = StatementSerializer
+
+    def get_queryset(self):
+        queryset = Statement.objects.select_related('account').order_by('id')
+
+        account_id = self.request.query_params.get('account')
+        if account_id:
+            queryset = queryset.filter(account_id=int(account_id))
+
+        date_from = self.request.query_params.get('date_from')
+        if date_from:
+            queryset = queryset.filter(period_end__gte=date_from)
+
+        date_to = self.request.query_params.get('date_to')
+        if date_to:
+            queryset = queryset.filter(period_end__lte=date_to)
+
+        return queryset
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='account', type=int, location='query', required=False,
+                             description='Filter by account ID'),
+            OpenApiParameter(name='date_from', type=str, location='query', required=False,
+                             description='Filter statements with period_end on or after this date (ISO 8601, e.g. 2025-01-01)'),
+            OpenApiParameter(name='date_to', type=str, location='query', required=False,
+                             description='Filter statements with period_end on or before this date (ISO 8601, e.g. 2025-12-31)'),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
