@@ -439,13 +439,9 @@ def _build_summary_sections(rows):
     assemble the two-level hierarchy expected by both report modes.
     Returns (sections, total_revenues, total_expenses).
     """
-    # Organise rows: type -> category -> subcategory -> total
     tree = {}  # type -> {cat_key -> {sub_key -> total}}
     cat_meta = {}   # cat_key -> {id, name, type}
     sub_meta = {}   # sub_key -> {id, name}
-
-    UNCLASSIFIED_CAT = (None, "Unclassified")
-    UNCATEGORIZED_SUB = (None, "Uncategorized")
 
     for row in rows:
         cls_type = row['cls_type'] or 'expense'
@@ -553,13 +549,41 @@ class CashFlowStatementViewSet(viewsets.ViewSet):
         if account_id:
             qs = qs.filter(account_id=int(account_id))
 
-        rows = qs.values(
+        agg_fields = dict(
             cls_id=models_F('location_classification__id'),
             cls_name=models_F('location_classification__name'),
             cls_type=models_F('location_classification__type'),
             sub_id=models_F('location_subclassification__id'),
             sub_name=models_F('location_subclassification__name'),
-        ).annotate(total=Sum('amount'))
+        )
+        rows = list(qs.values(**agg_fields).annotate(total=Sum('amount')))
+
+        if account_id:
+            transfer_qs = Transaction.objects.filter(
+                location_classification__type=LocationClassification.TYPE_TRANSFER,
+                account_id=int(account_id),
+            )
+            if date_from:
+                transfer_qs = transfer_qs.filter(transaction_date__date__gte=date_from)
+            if date_to:
+                transfer_qs = transfer_qs.filter(transaction_date__date__lte=date_to)
+
+            transfer_agg = dict(
+                cls_id=models_F('location_classification__id'),
+                cls_name=models_F('location_classification__name'),
+                sub_id=models_F('location_subclassification__id'),
+                sub_name=models_F('location_subclassification__name'),
+            )
+            for row in transfer_qs.filter(amount__gt=0).values(**transfer_agg).annotate(total=Sum('amount')):
+                row['cls_type'] = 'income'
+                row['cls_name'] = 'Transfers In'
+                row['cls_id'] = None
+                rows.append(row)
+            for row in transfer_qs.filter(amount__lt=0).values(**transfer_agg).annotate(total=Sum('amount')):
+                row['cls_type'] = 'expense'
+                row['cls_name'] = 'Transfers Out'
+                row['cls_id'] = None
+                rows.append(row)
 
         sections, total_revenues, total_expenses = _build_summary_sections(rows)
 
