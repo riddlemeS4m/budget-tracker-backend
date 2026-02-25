@@ -23,6 +23,7 @@ from budget.views import (
     FileUploadViewSet,
     TransactionListView,
     TransactionDetailView,
+    TransactionBatchUpdateView,
     TransactionExportView,
     LocationClassificationViewSet,
     LocationSubClassificationViewSet,
@@ -45,6 +46,7 @@ router.register(r'reports/cash-flow-statement', CashFlowStatementViewSet, basena
 api_v1_patterns = [
     path('', include(router.urls)),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
+    path('transactions/batch-update/', TransactionBatchUpdateView.as_view(), name='transaction-batch-update'),
     path('transactions/export/', TransactionExportView.as_view(), name='transaction-export'),
     path('transactions/<int:pk>/', TransactionDetailView.as_view(), name='transaction-detail'),
     

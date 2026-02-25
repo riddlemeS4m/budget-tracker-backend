@@ -1515,6 +1515,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/transactions/batch-update/:
+    post:
+      operationId: transactions_batch_update
+      description: Update classification fields on multiple transactions at once.
+        Only fields present in the request body are modified; omitted fields are left
+        unchanged. Pass null to clear a classification.
+      tags:
+      - transactions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionBatchUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TransactionBatchUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TransactionBatchUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionBatchUpdateResponse'
+          description: ''
   /api/v1/transactions/export/:
     get:
       operationId: transactions_export
@@ -2265,6 +2296,34 @@ components:
       - id
       - raw_data
       - updated_at
+    TransactionBatchUpdate:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+        location_classification:
+          type: integer
+          nullable: true
+        location_subclassification:
+          type: integer
+          nullable: true
+        time_classification:
+          type: integer
+          nullable: true
+        person_classification:
+          type: integer
+          nullable: true
+      required:
+      - ids
+    TransactionBatchUpdateResponse:
+      type: object
+      properties:
+        updated:
+          type: integer
+      required:
+      - updated
   securitySchemes:
     basicAuth:
       type: http

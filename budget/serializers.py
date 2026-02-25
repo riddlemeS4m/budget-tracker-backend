@@ -117,6 +117,30 @@ class TransactionSerializer(serializers.ModelSerializer):
         ]
 
 
+class TransactionBatchUpdateSerializer(serializers.Serializer):
+    ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    location_classification = serializers.PrimaryKeyRelatedField(
+        queryset=LocationClassification.objects.all(),
+        allow_null=True,
+        required=False,
+    )
+    location_subclassification = serializers.PrimaryKeyRelatedField(
+        queryset=LocationSubClassification.objects.all(),
+        allow_null=True,
+        required=False,
+    )
+    time_classification = serializers.PrimaryKeyRelatedField(
+        queryset=TimeClassification.objects.all(),
+        allow_null=True,
+        required=False,
+    )
+    person_classification = serializers.PrimaryKeyRelatedField(
+        queryset=PersonClassification.objects.all(),
+        allow_null=True,
+        required=False,
+    )
+
+
 class StatementSerializer(serializers.ModelSerializer):
     # Read: full nested Account object
     account = AccountSerializer(read_only=True)

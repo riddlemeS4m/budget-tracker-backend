@@ -28,6 +28,7 @@ from .serializers import (
     AccountSerializer,
     FileUploadSerializer,
     TransactionSerializer,
+    TransactionBatchUpdateSerializer,
     LocationClassificationSerializer,
     LocationSubClassificationSerializer,
     TimeClassificationSerializer,
@@ -344,6 +345,43 @@ class TransactionDetailView(APIView):
         transaction = get_object_or_404(Transaction, pk=pk)
         transaction.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TransactionBatchUpdateView(APIView):
+    """Handles POST /transactions/batch-update/ — bulk-updates classification fields on selected transactions."""
+
+    @extend_schema(
+        operation_id="transactions_batch_update",
+        request=TransactionBatchUpdateSerializer,
+        responses=inline_serializer(
+            name='TransactionBatchUpdateResponse',
+            fields={'updated': drf_fields.IntegerField()},
+        ),
+        description=(
+            "Update classification fields on multiple transactions at once. "
+            "Only fields present in the request body are modified; omitted fields are left unchanged. "
+            "Pass null to clear a classification."
+        ),
+    )
+    def post(self, request):
+        serializer = TransactionBatchUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        ids = data.pop('ids')
+
+        update_kwargs = {}
+        for field in ('location_classification', 'location_subclassification',
+                      'time_classification', 'person_classification'):
+            if field in data:
+                update_kwargs[field] = data[field]
+
+        if not update_kwargs:
+            return Response({'updated': 0})
+
+        updated_count = Transaction.objects.filter(id__in=ids).update(**update_kwargs)
+        return Response({'updated': updated_count})
 
 
 class TransactionExportView(APIView):
