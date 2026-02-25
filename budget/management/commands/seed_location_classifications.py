@@ -11,6 +11,7 @@ STANDARD_SIGN_TYPES = {
     Account.TYPE_CREDIT_CARD,
     Account.TYPE_INVESTMENT,
     Account.TYPE_LOAN,
+    Account.TYPE_OTHER,
 }
 
 TRANSFER_CATEGORY = 'N/A'
@@ -21,7 +22,7 @@ def infer_type_from_account_and_amount(account_type: str, amount) -> str:
         if amount is not None and amount > 0:
             return LocationClassification.TYPE_INCOME
         return LocationClassification.TYPE_EXPENSE
-    # TYPE_OTHER or anything unexpected — default to expense
+    # Unexpected/unknown account type — default to expense
     return LocationClassification.TYPE_EXPENSE
 
 
@@ -38,16 +39,31 @@ class Command(BaseCommand):
             action='store_true',
             help='Print what would be created/updated without writing to the DB.',
         )
+        parser.add_argument(
+            '--account',
+            type=int,
+            dest='account_id',
+            metavar='ACCOUNT_ID',
+            help='Restrict the migration to a single account (by primary key).',
+        )
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
+        account_id = options.get('account_id')
+
+        if account_id is not None:
+            if not Account.objects.filter(pk=account_id).exists():
+                raise SystemExit(self.style.ERROR(f"No account found with id={account_id}."))
+            scope_label = f"account {account_id}"
+        else:
+            scope_label = "all accounts"
 
         # ------------------------------------------------------------------
         # Step 1: Scan transactions and collect votes for each category's type.
         # Structure: { category: { type: count } }
         # Also collect subcategories per category.
         # ------------------------------------------------------------------
-        self.stdout.write("Scanning transactions…")
+        self.stdout.write(f"Scanning transactions ({scope_label})…")
 
         # { category: { 'income': n, 'expense': n, 'transfer': n } }
         type_votes: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -59,6 +75,8 @@ class Command(BaseCommand):
             .select_related('account')
             .only('category', 'subcategory', 'amount', 'account__type')
         )
+        if account_id is not None:
+            qs = qs.filter(account_id=account_id)
 
         for tx in qs.iterator(chunk_size=500):
             cat = (tx.category or '').strip()
@@ -178,6 +196,8 @@ class Command(BaseCommand):
                 .filter(location_classification__isnull=True)
                 .only('id', 'category', 'subcategory')
             )
+            if account_id is not None:
+                qs = qs.filter(account_id=account_id)
 
             for tx in qs.iterator(chunk_size=chunk_size):
                 cat = (tx.category or '').strip()
