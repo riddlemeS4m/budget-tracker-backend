@@ -1045,6 +1045,12 @@ paths:
           type: string
         description: Filter statements with period_end on or before this date (ISO
           8601, e.g. 2025-12-31)
+      - in: query
+        name: sort_by
+        schema:
+          type: string
+        description: 'Sort field. Prefix with "-" for descending. Allowed: id, account__name,
+          period_start, period_end, opening_balance, closing_balance.'
       tags:
       - statements
       security:

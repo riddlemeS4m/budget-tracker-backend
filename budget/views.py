@@ -454,12 +454,18 @@ class TransactionExportView(APIView):
         return response
 
 
+STATEMENT_SORT_FIELDS = {
+    "id", "account__name", "period_start", "period_end",
+    "opening_balance", "closing_balance",
+}
+
+
 class StatementViewSet(viewsets.ModelViewSet):
     queryset = Statement.objects.none()
     serializer_class = StatementSerializer
 
     def get_queryset(self):
-        queryset = Statement.objects.select_related('account').order_by('id')
+        queryset = Statement.objects.select_related('account')
 
         account_id = self.request.query_params.get('account')
         if account_id:
@@ -473,6 +479,17 @@ class StatementViewSet(viewsets.ModelViewSet):
         if date_to:
             queryset = queryset.filter(period_end__lte=date_to)
 
+        sort_by = self.request.query_params.get('sort_by', 'id')
+        direction = ''
+        field = sort_by
+        if sort_by.startswith('-'):
+            direction = '-'
+            field = sort_by[1:]
+        if field in STATEMENT_SORT_FIELDS:
+            queryset = queryset.order_by(f'{direction}{field}')
+        else:
+            queryset = queryset.order_by('id')
+
         return queryset
 
     @extend_schema(
@@ -483,6 +500,8 @@ class StatementViewSet(viewsets.ModelViewSet):
                              description='Filter statements with period_end on or after this date (ISO 8601, e.g. 2025-01-01)'),
             OpenApiParameter(name='date_to', type=str, location='query', required=False,
                              description='Filter statements with period_end on or before this date (ISO 8601, e.g. 2025-12-31)'),
+            OpenApiParameter(name='sort_by', type=str, location='query', required=False,
+                             description='Sort field. Prefix with "-" for descending. Allowed: id, account__name, period_start, period_end, opening_balance, closing_balance.'),
         ]
     )
     def list(self, request, *args, **kwargs):
