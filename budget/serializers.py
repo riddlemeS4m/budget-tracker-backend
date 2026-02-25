@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import (
     Account,
     FileUpload,
@@ -36,6 +37,7 @@ class FileUploadSerializer(serializers.ModelSerializer):
             'transaction_count', 'status', 'errors', 'created_at', 'updated_at',
         ]
 
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_headers(self, obj):
         first_txn = obj.transactions.first()
         if not first_txn:
