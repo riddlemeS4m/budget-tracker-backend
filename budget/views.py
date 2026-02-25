@@ -521,6 +521,8 @@ class CashFlowStatementViewSet(viewsets.ViewSet):
                              description='Start date (ISO 8601, e.g. 2025-01-01)'),
             OpenApiParameter(name='date_to', type=str, location='query', required=False,
                              description='End date (ISO 8601, e.g. 2025-12-31)'),
+            OpenApiParameter(name='account', type=int, location='query', required=False,
+                             description='Filter by account ID'),
         ],
         responses={200: inline_serializer(
             name='CashFlowStatementSummary',
@@ -539,6 +541,7 @@ class CashFlowStatementViewSet(viewsets.ViewSet):
         """GET /api/v1/reports/cash-flow-statement/summary/"""
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
+        account_id = request.query_params.get('account')
 
         qs = Transaction.objects.filter(
             location_classification__type__in=['income', 'expense'],
@@ -547,6 +550,8 @@ class CashFlowStatementViewSet(viewsets.ViewSet):
             qs = qs.filter(transaction_date__date__gte=date_from)
         if date_to:
             qs = qs.filter(transaction_date__date__lte=date_to)
+        if account_id:
+            qs = qs.filter(account_id=int(account_id))
 
         rows = qs.values(
             cls_id=models_F('location_classification__id'),

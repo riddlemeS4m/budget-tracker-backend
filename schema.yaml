@@ -850,6 +850,11 @@ paths:
       description: GET /api/v1/reports/cash-flow-statement/summary/
       parameters:
       - in: query
+        name: account
+        schema:
+          type: integer
+        description: Filter by account ID
+      - in: query
         name: date_from
         schema:
           type: string
