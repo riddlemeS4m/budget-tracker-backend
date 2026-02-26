@@ -903,7 +903,13 @@ class StatementReconciliationViewSet(viewsets.ViewSet):
             txn_count = stmt.txn_count_annotated if stmt.txn_count_annotated is not None else 0
 
             if opening is not None:
-                expected_change = closing - opening
+                # Credit card balances are liabilities: a rising balance means
+                # more was spent (negative transactions), so negate the
+                # statement delta to match the transaction sign convention.
+                if stmt.account.type == Account.TYPE_CREDIT_CARD:
+                    expected_change = -(closing - opening)
+                else:
+                    expected_change = closing - opening
                 discrepancy = expected_change - txn_sum
                 is_reconciled = discrepancy == Decimal('0')
                 total_discrepancy += discrepancy
