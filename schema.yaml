@@ -877,6 +877,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/CashFlowStatementSummary'
           description: ''
+  /api/v1/reports/statement-reconciliation/:
+    get:
+      operationId: statement_reconciliation_list
+      description: GET /api/v1/reports/statement-reconciliation/
+      parameters:
+      - in: query
+        name: account
+        schema:
+          type: integer
+        description: Filter by account ID
+      - in: query
+        name: year
+        schema:
+          type: integer
+        description: Filter by year of period_end
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatementReconciliation'
+          description: ''
   /api/v1/schema/:
     get:
       operationId: schema_retrieve
@@ -2207,6 +2237,20 @@ components:
       - id
       - period_end
       - updated_at
+    StatementReconciliation:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        summary:
+          type: object
+          additionalProperties: {}
+      required:
+      - rows
+      - summary
     StatusEnum:
       enum:
       - pending

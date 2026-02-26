@@ -2,7 +2,7 @@ import csv
 import io
 from collections import defaultdict
 from decimal import Decimal
-from django.db.models import Count, Sum, F as models_F
+from django.db.models import Count, Sum, F as models_F, OuterRef, Subquery
 from django.db.models.functions import TruncMonth
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -823,4 +823,122 @@ class CashFlowStatementViewSet(viewsets.ViewSet):
             'total_revenues': {'months': months_to_response(total_rev_months), 'ytd': ytd(total_rev_months)},
             'total_expenses': {'months': months_to_response(total_exp_months), 'ytd': ytd(total_exp_months)},
             'net_income': {'months': months_to_response(net_months), 'ytd': ytd(net_months)},
+        })
+
+
+class StatementReconciliationViewSet(viewsets.ViewSet):
+    """
+    Audit report: for each statement, compare the expected balance change
+    (closing_balance - opening_balance) against the sum of matching transactions.
+    Surfaces import gaps or sign convention issues.
+    """
+
+    @extend_schema(
+        operation_id='statement_reconciliation_list',
+        parameters=[
+            OpenApiParameter(name='account', type=int, location='query', required=False,
+                             description='Filter by account ID'),
+            OpenApiParameter(name='year', type=int, location='query', required=False,
+                             description='Filter by year of period_end'),
+        ],
+        responses={200: inline_serializer(
+            name='StatementReconciliation',
+            fields={
+                'rows': drf_fields.ListField(child=drf_fields.DictField()),
+                'summary': drf_fields.DictField(),
+            },
+        )},
+    )
+    def list(self, request):
+        """GET /api/v1/reports/statement-reconciliation/"""
+        account_id = request.query_params.get('account')
+        year_param = request.query_params.get('year')
+
+        qs = Statement.objects.select_related('account').exclude(
+            account__type=Account.TYPE_INVESTMENT
+        ).order_by('account__name', 'period_end')
+
+        if account_id:
+            try:
+                qs = qs.filter(account_id=int(account_id))
+            except ValueError:
+                return Response({'detail': 'account must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if year_param:
+            try:
+                qs = qs.filter(period_end__year=int(year_param))
+            except ValueError:
+                return Response({'detail': 'year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Annotate each statement with the sum and count of transactions that fall
+        # within its period and belong to the same account.
+        txn_sum_subquery = Subquery(
+            Transaction.objects.filter(
+                account=OuterRef('account'),
+                transaction_date__date__gte=OuterRef('period_start'),
+                transaction_date__date__lte=OuterRef('period_end'),
+            ).values('account').annotate(s=Sum('amount')).values('s')[:1]
+        )
+        txn_count_subquery = Subquery(
+            Transaction.objects.filter(
+                account=OuterRef('account'),
+                transaction_date__date__gte=OuterRef('period_start'),
+                transaction_date__date__lte=OuterRef('period_end'),
+            ).values('account').annotate(c=Count('id')).values('c')[:1]
+        )
+
+        qs = qs.annotate(
+            txn_sum_annotated=txn_sum_subquery,
+            txn_count_annotated=txn_count_subquery,
+        )
+
+        rows = []
+        total_discrepancy = Decimal('0')
+        reconciled_count = 0
+
+        for stmt in qs:
+            opening = stmt.opening_balance
+            closing = stmt.closing_balance
+            txn_sum = stmt.txn_sum_annotated if stmt.txn_sum_annotated is not None else Decimal('0')
+            txn_count = stmt.txn_count_annotated if stmt.txn_count_annotated is not None else 0
+
+            if opening is not None:
+                expected_change = closing - opening
+                discrepancy = expected_change - txn_sum
+                is_reconciled = discrepancy == Decimal('0')
+                total_discrepancy += discrepancy
+            else:
+                expected_change = None
+                discrepancy = None
+                is_reconciled = False
+
+            if is_reconciled:
+                reconciled_count += 1
+
+            rows.append({
+                'statement_id': stmt.id,
+                'account_id': stmt.account_id,
+                'account_name': stmt.account.name,
+                'period_start': str(stmt.period_start) if stmt.period_start else None,
+                'period_end': str(stmt.period_end),
+                'opening_balance': str(opening) if opening is not None else None,
+                'closing_balance': str(closing),
+                'expected_change': str(expected_change) if expected_change is not None else None,
+                'transaction_sum': str(txn_sum),
+                'transaction_count': txn_count,
+                'discrepancy': str(discrepancy) if discrepancy is not None else None,
+                'is_reconciled': is_reconciled,
+            })
+
+        total_statements = len(rows)
+        unreconciled_count = total_statements - reconciled_count
+
+        return Response({
+            'rows': rows,
+            'summary': {
+                'total_statements': total_statements,
+                'reconciled_count': reconciled_count,
+                'unreconciled_count': unreconciled_count,
+                'total_discrepancy': str(total_discrepancy),
+            },
         })
