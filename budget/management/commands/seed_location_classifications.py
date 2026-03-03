@@ -12,6 +12,7 @@ STANDARD_SIGN_TYPES = {
     Account.TYPE_INVESTMENT,
     Account.TYPE_LOAN,
     Account.TYPE_OTHER,
+    Account.TYPE_PAYROLL,
 }
 
 TRANSFER_CATEGORY = 'N/A'

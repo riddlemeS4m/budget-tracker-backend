@@ -1739,6 +1739,7 @@ components:
       - investment
       - loan
       - other
+      - payroll
       type: string
       description: |-
         * `checking` - Checking
@@ -1747,6 +1748,7 @@ components:
         * `investment` - Investment
         * `loan` - Loan
         * `other` - Other
+        * `payroll` - Payroll
     CashFlowStatementMonthly:
       type: object
       properties:

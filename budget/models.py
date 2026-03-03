@@ -7,6 +7,7 @@ class Account(models.Model):
     TYPE_INVESTMENT = 'investment'
     TYPE_LOAN = 'loan'
     TYPE_OTHER = 'other'
+    TYPE_PAYROLL = 'payroll'
 
     TYPE_CHOICES = [
         (TYPE_CHECKING, 'Checking'),
@@ -15,6 +16,7 @@ class Account(models.Model):
         (TYPE_INVESTMENT, 'Investment'),
         (TYPE_LOAN, 'Loan'),
         (TYPE_OTHER, 'Other'),
+        (TYPE_PAYROLL, 'Payroll'),
     ]
 
     name = models.CharField(max_length=255)
