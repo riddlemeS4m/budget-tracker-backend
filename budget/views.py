@@ -236,6 +236,10 @@ def _apply_transaction_filters(queryset, query_params):
     if location_classification_id:
         queryset = queryset.filter(location_classification_id=int(location_classification_id))
 
+    location_classification_null = query_params.get("location_classification_null")
+    if location_classification_null == "true":
+        queryset = queryset.filter(location_classification__isnull=True)
+
     location_subclassification_id = query_params.get("location_subclassification")
     if location_subclassification_id:
         queryset = queryset.filter(location_subclassification_id=int(location_subclassification_id))
@@ -278,6 +282,7 @@ class TransactionListView(APIView):
             OpenApiParameter(name="description", type=str, location="query", required=False, description="Filter by description (case-insensitive substring match)"),
             OpenApiParameter(name="sort_by", type=str, location="query", required=False, description="Sort field, optionally prefixed with '-' for descending (e.g. '-amount'). Allowed values: id, account__name, transaction_date, description, amount, category, subcategory. Defaults to -created_at."),
             OpenApiParameter(name="location_classification", type=int, location="query", required=False, description="Filter by location classification ID"),
+            OpenApiParameter(name="location_classification_null", type=str, location="query", required=False, description="Pass 'true' to filter only transactions with no location classification"),
             OpenApiParameter(name="location_subclassification", type=int, location="query", required=False, description="Filter by location subclassification ID"),
             OpenApiParameter(name="time_classification", type=int, location="query", required=False, description="Filter by time classification ID"),
             OpenApiParameter(name="person_classification", type=int, location="query", required=False, description="Filter by person classification ID"),
@@ -947,4 +952,131 @@ class StatementReconciliationViewSet(viewsets.ViewSet):
                 'unreconciled_count': unreconciled_count,
                 'total_discrepancy': str(total_discrepancy),
             },
+        })
+
+
+class IncomeExpenseSummaryViewSet(viewsets.ViewSet):
+    """
+    Report that groups revenues and expenses by location classification,
+    showing total, percent of section total, and transaction count per group,
+    plus an uncategorized bucket for transactions with no location classification.
+    """
+
+    @extend_schema(
+        operation_id='income_expense_summary',
+        parameters=[
+            OpenApiParameter(name='date_from', type=str, location='query', required=False,
+                             description='Start date (ISO 8601, e.g. 2025-01-01)'),
+            OpenApiParameter(name='date_to', type=str, location='query', required=False,
+                             description='End date (ISO 8601, e.g. 2025-12-31)'),
+            OpenApiParameter(name='account', type=int, location='query', required=False,
+                             description='Filter by account ID'),
+        ],
+        responses={200: inline_serializer(
+            name='IncomeExpenseSummary',
+            fields={
+                'date_from': drf_fields.CharField(allow_null=True),
+                'date_to': drf_fields.CharField(allow_null=True),
+                'sections': drf_fields.ListField(child=drf_fields.DictField()),
+            },
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """GET /api/v1/reports/income-expense-summary/summary/"""
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        account_id = request.query_params.get('account')
+
+        def _base_qs():
+            qs = Transaction.objects.all()
+            if date_from:
+                qs = qs.filter(transaction_date__date__gte=date_from)
+            if date_to:
+                qs = qs.filter(transaction_date__date__lte=date_to)
+            if account_id:
+                qs = qs.filter(account_id=int(account_id))
+            return qs
+
+        # Classified transactions (income or expense)
+        classified_rows = (
+            _base_qs()
+            .filter(location_classification__type__in=['income', 'expense'])
+            .values(
+                cls_id=models_F('location_classification__id'),
+                cls_name=models_F('location_classification__name'),
+                cls_type=models_F('location_classification__type'),
+            )
+            .annotate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+
+        # Unclassified transactions: split by sign to assign to revenue vs expense
+        unclassified_qs = _base_qs().filter(location_classification__isnull=True)
+        unclassified_income = (
+            unclassified_qs.filter(amount__gt=0)
+            .aggregate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+        unclassified_expense = (
+            unclassified_qs.filter(amount__lt=0)
+            .aggregate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+
+        # Build tree: cls_type -> list of {id, name, total, count}
+        tree = {'income': [], 'expense': []}
+        for row in classified_rows:
+            tree[row['cls_type']].append({
+                'id': row['cls_id'],
+                'name': row['cls_name'],
+                'total': row['total'] or Decimal('0'),
+                'transaction_count': row['transaction_count'],
+            })
+
+        def _build_section(cls_type, label, unclassified_agg):
+            categories = tree[cls_type]
+            # Sort by absolute value descending so largest groups appear first
+            categories = sorted(categories, key=lambda c: abs(c['total']), reverse=True)
+
+            cat_sum = sum(c['total'] for c in categories)
+            unc_total = unclassified_agg['total'] or Decimal('0')
+            unc_count = unclassified_agg['transaction_count'] or 0
+            section_total = cat_sum + unc_total
+
+            def _pct(amount):
+                if section_total == 0:
+                    return '0.00'
+                return str(round(abs(amount) / abs(section_total) * 100, 2))
+
+            category_out = [
+                {
+                    'id': c['id'],
+                    'name': c['name'],
+                    'total': str(c['total']),
+                    'transaction_count': c['transaction_count'],
+                    'percent': _pct(c['total']),
+                }
+                for c in categories
+            ]
+
+            return {
+                'type': cls_type,
+                'label': label,
+                'total': str(section_total),
+                'transaction_count': sum(c['transaction_count'] for c in categories) + unc_count,
+                'categories': category_out,
+                'uncategorized': {
+                    'total': str(unc_total),
+                    'transaction_count': unc_count,
+                    'percent': _pct(unc_total),
+                },
+            }
+
+        sections = [
+            _build_section('income', 'Revenues', unclassified_income),
+            _build_section('expense', 'Expenses', unclassified_expense),
+        ]
+
+        return Response({
+            'date_from': date_from,
+            'date_to': date_to,
+            'sections': sections,
         })

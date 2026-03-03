@@ -877,6 +877,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/CashFlowStatementSummary'
           description: ''
+  /api/v1/reports/income-expense-summary/summary/:
+    get:
+      operationId: income_expense_summary
+      description: GET /api/v1/reports/income-expense-summary/summary/
+      parameters:
+      - in: query
+        name: account
+        schema:
+          type: integer
+        description: Filter by account ID
+      - in: query
+        name: date_from
+        schema:
+          type: string
+        description: Start date (ISO 8601, e.g. 2025-01-01)
+      - in: query
+        name: date_to
+        schema:
+          type: string
+        description: End date (ISO 8601, e.g. 2025-12-31)
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeExpenseSummary'
+          description: ''
   /api/v1/reports/statement-reconciliation/:
     get:
       operationId: statement_reconciliation_list
@@ -1410,6 +1443,11 @@ paths:
           type: integer
         description: Filter by location classification ID
       - in: query
+        name: location_classification_null
+        schema:
+          type: string
+        description: Pass 'true' to filter only transactions with no location classification
+      - in: query
         name: location_subclassification
         schema:
           type: integer
@@ -1812,6 +1850,24 @@ components:
       - headers
       - id
       - updated_at
+    IncomeExpenseSummary:
+      type: object
+      properties:
+        date_from:
+          type: string
+          nullable: true
+        date_to:
+          type: string
+          nullable: true
+        sections:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - date_from
+      - date_to
+      - sections
     LocationClassification:
       type: object
       properties:

@@ -32,6 +32,7 @@ from budget.views import (
     StatementViewSet,
     CashFlowStatementViewSet,
     StatementReconciliationViewSet,
+    IncomeExpenseSummaryViewSet,
 )
 
 router = DefaultRouter()
@@ -44,6 +45,7 @@ router.register(r'person-classifications', PersonClassificationViewSet)
 router.register(r'statements', StatementViewSet)
 router.register(r'reports/cash-flow-statement', CashFlowStatementViewSet, basename='cash-flow-statement-report')
 router.register(r'reports/statement-reconciliation', StatementReconciliationViewSet, basename='statement-reconciliation-report')
+router.register(r'reports/income-expense-summary', IncomeExpenseSummaryViewSet, basename='income-expense-summary-report')
 
 api_v1_patterns = [
     path('', include(router.urls)),
