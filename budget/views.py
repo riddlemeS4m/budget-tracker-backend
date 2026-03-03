@@ -252,6 +252,18 @@ def _apply_transaction_filters(queryset, query_params):
     if person_classification_id:
         queryset = queryset.filter(person_classification_id=int(person_classification_id))
 
+    account_type = query_params.get("account_type")
+    if account_type:
+        queryset = queryset.filter(account__type=account_type)
+
+    excluded_account_type = query_params.get("excluded_account_type")
+    if excluded_account_type:
+        queryset = queryset.exclude(account__type=excluded_account_type)
+
+    location_classification_type = query_params.get("location_classification_type")
+    if location_classification_type:
+        queryset = queryset.filter(location_classification__type=location_classification_type)
+
     sort_by = query_params.get("sort_by", "-created_at")
     direction = ""
     field = sort_by
@@ -286,6 +298,9 @@ class TransactionListView(APIView):
             OpenApiParameter(name="location_subclassification", type=int, location="query", required=False, description="Filter by location subclassification ID"),
             OpenApiParameter(name="time_classification", type=int, location="query", required=False, description="Filter by time classification ID"),
             OpenApiParameter(name="person_classification", type=int, location="query", required=False, description="Filter by person classification ID"),
+            OpenApiParameter(name="account_type", type=str, location="query", required=False, description="Filter by account type (e.g. payroll, checking, savings)"),
+            OpenApiParameter(name="excluded_account_type", type=str, location="query", required=False, description="Exclude accounts of the given type (e.g. payroll)"),
+            OpenApiParameter(name="location_classification_type", type=str, location="query", required=False, description="Filter by location classification type (income, expense, transfer)"),
         ],
         responses=inline_serializer(
             name='PaginatedTransactionList',
@@ -1079,4 +1094,296 @@ class IncomeExpenseSummaryViewSet(viewsets.ViewSet):
             'date_from': date_from,
             'date_to': date_to,
             'sections': sections,
+        })
+
+
+class PayrollReportViewSet(viewsets.ViewSet):
+    """
+    Report that breaks down where the user's payroll goes each month:
+    transfers to non-checking accounts, payroll deductions, and expenses
+    from other accounts, all as dollar amounts and percentages of payroll.
+    """
+
+    @extend_schema(
+        operation_id='payroll_summary',
+        parameters=[
+            OpenApiParameter(name='date_from', type=str, location='query', required=False,
+                             description='Start date (ISO 8601, e.g. 2025-01-01)'),
+            OpenApiParameter(name='date_to', type=str, location='query', required=False,
+                             description='End date (ISO 8601, e.g. 2025-01-31)'),
+        ],
+        responses={200: inline_serializer(
+            name='PayrollSummary',
+            fields={
+                'date_from': drf_fields.CharField(allow_null=True),
+                'date_to': drf_fields.CharField(allow_null=True),
+                'payroll_total': drf_fields.CharField(),
+                'net_change': drf_fields.CharField(),
+                'sections': drf_fields.ListField(child=drf_fields.DictField()),
+            },
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """GET /api/v1/reports/payroll/summary/"""
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        payroll_account_ids = list(
+            Account.objects.filter(type=Account.TYPE_PAYROLL).values_list('id', flat=True)
+        )
+        checking_account_ids = set(
+            Account.objects.filter(type=Account.TYPE_CHECKING).values_list('id', flat=True)
+        )
+
+        def _date_filter(qs):
+            if date_from:
+                qs = qs.filter(transaction_date__date__gte=date_from)
+            if date_to:
+                qs = qs.filter(transaction_date__date__lte=date_to)
+            return qs
+
+        # ---------------------------------------------------------------
+        # Payroll total: sum of positive transactions in payroll accounts
+        # ---------------------------------------------------------------
+        payroll_total_agg = _date_filter(
+            Transaction.objects.filter(account_id__in=payroll_account_ids, amount__gt=0)
+        ).aggregate(total=Sum('amount'))
+        payroll_total = payroll_total_agg['total'] or Decimal('0')
+
+        def _pct(amount):
+            if payroll_total == 0:
+                return '0.00'
+            return str(round(abs(amount) / abs(payroll_total) * 100, 2))
+
+        # ---------------------------------------------------------------
+        # Section 1: Transfers from Payroll (excluding to checking)
+        # Match outgoing transfer txns in payroll accounts to incoming
+        # transfer txns in non-payroll accounts by amount + closest date.
+        # ---------------------------------------------------------------
+        payroll_transfers = list(
+            _date_filter(
+                Transaction.objects.filter(
+                    account_id__in=payroll_account_ids,
+                    location_classification__type=LocationClassification.TYPE_TRANSFER,
+                    amount__lt=0,
+                )
+            ).select_related('account').order_by('transaction_date')
+        )
+
+        dest_candidates = list(
+            _date_filter(
+                Transaction.objects.filter(
+                    location_classification__type=LocationClassification.TYPE_TRANSFER,
+                    amount__gt=0,
+                ).exclude(account_id__in=payroll_account_ids)
+            ).select_related('account').order_by('transaction_date')
+        )
+
+        # For each payroll outgoing transfer, find the best-matching
+        # destination candidate (same abs amount, closest date).
+        transfer_by_account: dict[int, dict] = {}
+        used_dest_ids: set[int] = set()
+
+        for pt in payroll_transfers:
+            target_amount = abs(pt.amount)
+            best: Transaction | None = None
+            best_delta = None
+            for dc in dest_candidates:
+                if dc.id in used_dest_ids:
+                    continue
+                if abs(dc.amount) != target_amount:
+                    continue
+                if pt.transaction_date is None or dc.transaction_date is None:
+                    continue
+                delta = abs((pt.transaction_date - dc.transaction_date).total_seconds())
+                if best_delta is None or delta < best_delta:
+                    best = dc
+                    best_delta = delta
+
+            if best is None:
+                continue
+
+            used_dest_ids.add(best.id)
+            dest_acct_id = best.account_id
+            # Exclude transfers to checking accounts
+            if dest_acct_id in checking_account_ids:
+                continue
+
+            if dest_acct_id not in transfer_by_account:
+                transfer_by_account[dest_acct_id] = {
+                    'id': dest_acct_id,
+                    'name': best.account.name,
+                    'total': Decimal('0'),
+                    'transaction_count': 0,
+                }
+            transfer_by_account[dest_acct_id]['total'] += pt.amount
+            transfer_by_account[dest_acct_id]['transaction_count'] += 1
+
+        transfer_categories = sorted(
+            transfer_by_account.values(),
+            key=lambda c: abs(c['total']),
+            reverse=True,
+        )
+        transfer_section_total = sum(c['total'] for c in transfer_categories)
+        transfer_section = {
+            'type': 'transfers',
+            'label': 'Transfers from Payroll',
+            'total': str(transfer_section_total),
+            'transaction_count': sum(c['transaction_count'] for c in transfer_categories),
+            'categories': [
+                {
+                    'id': c['id'],
+                    'name': c['name'],
+                    'total': str(c['total']),
+                    'transaction_count': c['transaction_count'],
+                    'percent': _pct(c['total']),
+                }
+                for c in transfer_categories
+            ],
+            'uncategorized': {'total': '0.00', 'transaction_count': 0, 'percent': '0.00'},
+        }
+
+        # ---------------------------------------------------------------
+        # Section 2: Payroll Deductions (expense txns in payroll accounts)
+        # ---------------------------------------------------------------
+        payroll_expense_rows = (
+            _date_filter(
+                Transaction.objects.filter(
+                    account_id__in=payroll_account_ids,
+                    location_classification__type=LocationClassification.TYPE_EXPENSE,
+                )
+            )
+            .values(
+                cls_id=models_F('location_classification__id'),
+                cls_name=models_F('location_classification__name'),
+            )
+            .annotate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+        payroll_expense_unclassified = (
+            _date_filter(
+                Transaction.objects.filter(
+                    account_id__in=payroll_account_ids,
+                    location_classification__isnull=True,
+                    amount__lt=0,
+                )
+            ).aggregate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+
+        deduction_cats = sorted(
+            [
+                {
+                    'id': r['cls_id'],
+                    'name': r['cls_name'],
+                    'total': r['total'] or Decimal('0'),
+                    'transaction_count': r['transaction_count'],
+                }
+                for r in payroll_expense_rows
+            ],
+            key=lambda c: abs(c['total']),
+            reverse=True,
+        )
+        ded_unc_total = payroll_expense_unclassified['total'] or Decimal('0')
+        ded_unc_count = payroll_expense_unclassified['transaction_count'] or 0
+        deduction_section_total = sum(c['total'] for c in deduction_cats) + ded_unc_total
+        deduction_section = {
+            'type': 'payroll_expenses',
+            'label': 'Payroll Deductions',
+            'total': str(deduction_section_total),
+            'transaction_count': sum(c['transaction_count'] for c in deduction_cats) + ded_unc_count,
+            'categories': [
+                {
+                    'id': c['id'],
+                    'name': c['name'],
+                    'total': str(c['total']),
+                    'transaction_count': c['transaction_count'],
+                    'percent': _pct(c['total']),
+                }
+                for c in deduction_cats
+            ],
+            'uncategorized': {
+                'total': str(ded_unc_total),
+                'transaction_count': ded_unc_count,
+                'percent': _pct(ded_unc_total),
+            },
+        }
+
+        # ---------------------------------------------------------------
+        # Section 3: Expenses from Other Accounts (non-payroll)
+        # ---------------------------------------------------------------
+        other_expense_rows = (
+            _date_filter(
+                Transaction.objects.filter(
+                    location_classification__type=LocationClassification.TYPE_EXPENSE,
+                ).exclude(account_id__in=payroll_account_ids)
+            )
+            .values(
+                cls_id=models_F('location_classification__id'),
+                cls_name=models_F('location_classification__name'),
+            )
+            .annotate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+        other_expense_unclassified = (
+            _date_filter(
+                Transaction.objects.filter(
+                    location_classification__isnull=True,
+                    amount__lt=0,
+                ).exclude(account_id__in=payroll_account_ids)
+            ).aggregate(total=Sum('amount'), transaction_count=Count('id'))
+        )
+
+        other_cats = sorted(
+            [
+                {
+                    'id': r['cls_id'],
+                    'name': r['cls_name'],
+                    'total': r['total'] or Decimal('0'),
+                    'transaction_count': r['transaction_count'],
+                }
+                for r in other_expense_rows
+            ],
+            key=lambda c: abs(c['total']),
+            reverse=True,
+        )
+        other_unc_total = other_expense_unclassified['total'] or Decimal('0')
+        other_unc_count = other_expense_unclassified['transaction_count'] or 0
+        other_section_total = sum(c['total'] for c in other_cats) + other_unc_total
+        other_expense_section = {
+            'type': 'other_expenses',
+            'label': 'Expenses from Other Accounts',
+            'total': str(other_section_total),
+            'transaction_count': sum(c['transaction_count'] for c in other_cats) + other_unc_count,
+            'categories': [
+                {
+                    'id': c['id'],
+                    'name': c['name'],
+                    'total': str(c['total']),
+                    'transaction_count': c['transaction_count'],
+                    'percent': _pct(c['total']),
+                }
+                for c in other_cats
+            ],
+            'uncategorized': {
+                'total': str(other_unc_total),
+                'transaction_count': other_unc_count,
+                'percent': _pct(other_unc_total),
+            },
+        }
+
+        # ---------------------------------------------------------------
+        # Net change: payroll_total + all section outflows
+        # ---------------------------------------------------------------
+        net_change = (
+            payroll_total
+            + transfer_section_total
+            + deduction_section_total
+            + other_section_total
+        )
+
+        return Response({
+            'date_from': date_from,
+            'date_to': date_to,
+            'payroll_total': str(payroll_total),
+            'net_change': str(net_change),
+            'sections': [transfer_section, deduction_section, other_expense_section],
         })
